@@ -530,7 +530,10 @@
                 setResponse({ response: '', word_count: 0, generation_time: '0' });
 
                 try {
-                    const res = await fetch('http://localhost:3001/generate', {
+                    // Use relative URL for production, works on any domain
+                    const apiUrl = window.location.origin + '/generate';
+                    
+                    const res = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
