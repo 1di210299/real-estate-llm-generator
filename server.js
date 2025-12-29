@@ -14,6 +14,11 @@ app.use(express.json());
 // Serve static files from current directory
 app.use(express.static(__dirname));
 
+// Explicitly serve index.html at root
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Load system prompt
 const systemPrompt = fs.readFileSync(
     path.join(__dirname, 'docs/system_prompt.md'),
