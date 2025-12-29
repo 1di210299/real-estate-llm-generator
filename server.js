@@ -3,7 +3,11 @@ const cors = require('cors');
 const { OpenAI } = require('openai');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+// Only load .env file in development (Digital Ocean uses environment variables directly)
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config({ path: path.join(__dirname, '../.env') });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,6 +17,21 @@ app.use(express.json());
 
 // Serve static files from current directory
 app.use(express.static(__dirname));
+
+// Diagnostic endpoint
+app.get('/health', (req, res) => {
+    const indexExists = fs.existsSync(path.join(__dirname, 'index.html'));
+    const docsExists = fs.existsSync(path.join(__dirname, 'docs/system_prompt.md'));
+    res.json({
+        status: 'ok',
+        port: PORT,
+        env: process.env.NODE_ENV || 'development',
+        __dirname: __dirname,
+        indexHtmlExists: indexExists,
+        docsExists: docsExists,
+        apiKeyLoaded: !!process.env.OPENAI_API_KEY
+    });
+});
 
 // Explicitly serve index.html at root
 app.get('/', (req, res) => {
