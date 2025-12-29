@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: real-estate-llm
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: NODE_VERSION
+        value: 18.17.0

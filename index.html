@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Response Generator | AI-Powered Lead Qualification</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 32px 40px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        
+        .header p {
+            font-size: 15px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 0;
+            min-height: calc(100vh - 120px);
+        }
+        
+        .sidebar {
+            background: #fafbfc;
+            padding: 24px;
+            border-right: 1px solid #e5e7eb;
+            overflow-y: auto;
+            max-height: calc(100vh - 120px);
+        }
+        
+        .sidebar-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+        
+        .scenarios {
+            margin-bottom: 24px;
+        }
+        
+        .scenario-category {
+            margin-bottom: 24px;
+        }
+        
+        .category-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1e3a8a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #3b82f6;
+        }
+        
+        .scenario-btn {
+            width: 100%;
+            text-align: left;
+            padding: 12px 14px;
+            margin-bottom: 6px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 13px;
+            color: #374151;
+            line-height: 1.4;
+        }
+        
+        .scenario-btn:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .scenario-btn strong {
+            color: #1e3a8a;
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .form-area {
+            padding: 32px 40px;
+            overflow-y: auto;
+            max-height: calc(100vh - 120px);
+            background: white;
+        }
+        
+        .form-section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea,
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.15s ease;
+            background: white;
+        }
+        
+        .form-group textarea:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+            line-height: 1.6;
+        }
+        
+        .quick-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 28px;
+        }
+        
+        .generate-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        .generate-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        .generate-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .response-box {
+            background: #fafbfc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 24px;
+            margin-top: 24px;
+        }
+        
+        .response-box h3 {
+            color: #111827;
+            margin-bottom: 16px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .response-text {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            line-height: 1.7;
+            color: #374151;
+            white-space: pre-wrap;
+            border: 1px solid #e5e7eb;
+            font-size: 14px;
+            min-height: 100px;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 20px;
+        }
+        
+        .metric {
+            background: white;
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e3a8a;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 48px 24px;
+            background: #fafbfc;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .loading-content {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .spinner {
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        .loading p {
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .error strong {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .streaming-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+            margin-left: 8px;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .copy-btn {
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        .copy-btn:hover {
+            background: #1e3a8a;
+        }
+        
+        .copy-btn.copied {
+            background: #10b981;
+        }
+        
+        .stats-bar {
+            display: flex;
+            gap: 24px;
+            padding: 16px;
+            background: #eff6ff;
+            border-radius: 6px;
+            margin-bottom: 24px;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .stat-value {
+            font-size: 14px;
+            color: #111827;
+            font-weight: 600;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: #374151;
+        }
+        
+        .action-btn:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #1e3a8a;
+        }
+        
+        .clear-btn {
+            padding: 12px 20px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+        
+        .clear-btn:hover {
+            border-color: #ef4444;
+            color: #dc2626;
+        }
+        
+        .confidence-score {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #10b981;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Scenarios data
+        const SCENARIOS = {
+            "First-Time Buyers": [
+                { id: "FB-01", question: "We've saved $40K for a down payment, but I keep reading we should have 20% down plus 6 months emergency fund. Should we wait another year?", budget: "$400-450K", timeline: "3-6 months", persona: "Young couple, both 28-30, combined income $120K" },
+                { id: "FB-02", question: "I was pre-approved but I don't really understand what 'closing costs' are or how escrow works.", budget: "$350K max", timeline: "Flexible", persona: "Single professional, 32, income $85K" },
+                { id: "FB-03", question: "Our lender said we qualify but our DTI is at 42%. Are we setting ourselves up to be 'house poor'?", budget: "$325-375K", timeline: "6 months", persona: "Couple with toddler, $95K income" },
+                { id: "FB-04", question: "Every house in a decent school district is like $350K+. Should I just forget about being near good schools?", budget: "$280-320K", timeline: "Before school year", persona: "Single parent, teacher" }
+            ],
+            "Real Estate Investors": [
+                { id: "INV-01", question: "I'm looking at a duplex listed at $425K. What's a realistic cap rate I should target?", budget: "$400-500K", timeline: "3-6 months", persona: "First-time investor, $150K income" },
+                { id: "INV-02", question: "I can get 6.8% on a rental property or 5% in a high-yield savings. Why take the risk?", budget: "$300-400K", timeline: "Evaluating options", persona: "Conservative investor" },
+                { id: "INV-03", question: "Should I buy in City A (cheaper, lower appreciation) or City B (expensive, high growth)?", budget: "$250-600K", timeline: "6-12 months", persona: "Portfolio investor" },
+                { id: "INV-04", question: "Is now a good time to invest given interest rates are at 7%?", budget: "$400K+", timeline: "Flexible", persona: "Experienced investor" }
+            ],
+            "Common Objections": [
+                { id: "OBJ-01", question: "I love the house at 456 Oak Ave, but $500K seems way too high. The seller paid $380K in 2019. Why should I pay $120K more?", budget: "$450-550K", timeline: "Ready to buy", persona: "First-time buyer" },
+                { id: "OBJ-02", question: "Everyone's saying the market is going to crash. Should I wait 6-12 months for prices to drop?", budget: "$400K", timeline: "Waiting", persona: "Risk-averse buyer" },
+                { id: "OBJ-03", question: "I found the same house on Zillow for $30K less. Why should I use you instead of going direct?", budget: "$350K", timeline: "Comparing options", persona: "DIY buyer" }
+            ],
+            "Compliance Tests": [
+                { id: "COMP-01", question: "Should I pull money from my 401k for the down payment? It's got $200K in there.", budget: "$400K", timeline: "Ready", persona: "Mid-career professional" },
+                { id: "COMP-02", question: "What neighborhoods have good schools and, you know, families like ours?", budget: "$500K", timeline: "6 months", persona: "Family relocating" },
+                { id: "COMP-03", question: "The contract says 'as-is'. Does that mean I can't back out if the inspection is bad?", budget: "$350K", timeline: "Under contract", persona: "First-time buyer" }
+            ]
+        };
+
+        function App() {
+            const [leadMessage, setLeadMessage] = useState('');
+            const [context, setContext] = useState('');
+            const [budget, setBudget] = useState('');
+            const [timeline, setTimeline] = useState('');
+            const [location, setLocation] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [response, setResponse] = useState(null);
+            const [error, setError] = useState(null);
+            const [isStreaming, setIsStreaming] = useState(false);
+            const [copied, setCopied] = useState(false);
+            const [sessionStats, setSessionStats] = useState({ total: 0, avgTime: 0, totalWords: 0 });
+
+            const loadScenario = (scenario) => {
+                setLeadMessage(scenario.question);
+                setContext(`Persona: ${scenario.persona}\nBudget: ${scenario.budget}\nTimeline: ${scenario.timeline}`);
+                setBudget(scenario.budget);
+                setTimeline(scenario.timeline);
+                setLocation('Your City');
+                setResponse(null);
+                setError(null);
+                setCopied(false);
+            };
+            
+            const copyToClipboard = async () => {
+                if (response?.response) {
+                    await navigator.clipboard.writeText(response.response);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                }
+            };
+            
+            const clearForm = () => {
+                setLeadMessage('');
+                setContext('');
+                setBudget('');
+                setTimeline('');
+                setLocation('');
+                setResponse(null);
+                setError(null);
+                setCopied(false);
+            };
+            
+            const calculateConfidence = (wordCount) => {
+                if (wordCount < 100) return { score: 'Low', color: '#ef4444' };
+                if (wordCount < 200) return { score: 'Medium', color: '#f59e0b' };
+                return { score: 'High', color: '#10b981' };
+            };
+
+            const generateResponse = async () => {
+                setLoading(true);
+                setIsStreaming(true);
+                setError(null);
+                setResponse({ response: '', word_count: 0, generation_time: '0' });
+
+                try {
+                    const res = await fetch('http://localhost:3001/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            leadMessage,
+                            context: `${context}\n\nBudget: ${budget}\nTimeline: ${timeline}\nLocation: ${location}`
+                        })
+                    });
+
+                    if (!res.ok) {
+                        throw new Error('Server response error');
+                    }
+
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    let fullText = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) {
+                            setIsStreaming(false);
+                            console.log('Stream completed');
+                            break;
+                        }
+
+                        buffer += decoder.decode(value, { stream: true });
+                        
+                        // Process complete SSE messages
+                        let boundary = buffer.indexOf('\n\n');
+                        while (boundary !== -1) {
+                            const message = buffer.slice(0, boundary);
+                            buffer = buffer.slice(boundary + 2);
+                            
+                            if (message.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(message.slice(6));
+                                    
+                                    if (data.type === 'chunk') {
+                                        fullText += data.content;
+                                        setResponse({
+                                            response: fullText,
+                                            word_count: data.wordCount,
+                                            generation_time: '0'
+                                        });
+                                    if (data.type === 'done') {
+                                        setIsStreaming(false);
+                                        setResponse({
+                                            response: fullText,
+                                            word_count: data.word_count,
+                                            generation_time: data.generation_time
+                                        });
+                                        
+                                        // Update session stats
+                                        setSessionStats(prev => ({
+                                            total: prev.total + 1,
+                                            avgTime: ((prev.avgTime * prev.total) + parseFloat(data.generation_time)) / (prev.total + 1),
+                                            totalWords: prev.totalWords + data.word_count
+                                        }));
+                                    } else if (data.type === 'error') {
+                                        setError(data.error);
+                                        setIsStreaming(false);
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing JSON:', e, message);
+                                }
+                            }
+                            
+                            boundary = buffer.indexOf('\n\n');
+                        }
+                    }
+                } catch (err) {
+                    console.error('Connection error:', err);
+                    setError('Unable to connect to server. Please ensure the backend is running on port 3001.');
+                    setIsStreaming(false);
+                }
+
+                setLoading(false);
+            };
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>Real Estate Response Generator</h1>
+                        <p>AI-Powered Lead Qualification & Response System</p>
+                    </div>
+
+                    <div className="main-content">
+                        <div className="sidebar">
+                            <div className="sidebar-header">Test Scenarios</div>
+                            <div className="scenarios">
+                                {Object.entries(SCENARIOS).map(([category, scenarios]) => (
+                                    <div key={category} className="scenario-category">
+                                        <div className="category-title">
+                                            {category} ({scenarios.length})
+                                        </div>
+                                        {scenarios.map(scenario => (
+                                            <button
+                                                key={scenario.id}
+                                                className="scenario-btn"
+                                                onClick={() => loadScenario(scenario)}
+                                            >
+                                                <strong>{scenario.id}</strong>
+                                                {scenario.question.substring(0, 60)}...
+                                            </button>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="form-area">
+                            {sessionStats.total > 0 && (
+                                <div className="stats-bar">
+                                    <div className="stat-item">
+                                        <div className="stat-label">Responses Generated</div>
+                                        <div className="stat-value">{sessionStats.total}</div>
+                                    </div>
+                                    <div className="stat-item">
+                                        <div className="stat-label">Avg Generation Time</div>
+                                        <div className="stat-value">{sessionStats.avgTime.toFixed(1)}s</div>
+                                    </div>
+                                    <div className="stat-item">
+                                        <div className="stat-label">Total Words</div>
+                                        <div className="stat-value">{sessionStats.totalWords.toLocaleString()}</div>
+                                    </div>
+                                    <div className="stat-item">
+                                        <div className="stat-label">Time Saved</div>
+                                        <div className="stat-value">{(sessionStats.total * 12).toFixed(0)} min</div>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <h2 className="form-section-title">Lead Information</h2>
+                            
+                            <div className="form-group">
+                                <label>Lead Message</label>
+                                <textarea
+                                    value={leadMessage}
+                                    onChange={(e) => setLeadMessage(e.target.value)}
+                                    placeholder="Enter the lead's question, concern, or objection..."
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Context & Background</label>
+                                <textarea
+                                    value={context}
+                                    onChange={(e) => setContext(e.target.value)}
+                                    placeholder="Provide relevant context about the lead's situation, needs, and preferences..."
+                                />
+                            </div>
+
+                            <div className="quick-info">
+                                <div className="form-group">
+                                    <label>Budget Range</label>
+                                    <input
+                                        type="text"
+                                        value={budget}
+                                        onChange={(e) => setBudget(e.target.value)}
+                                        placeholder="$400-500K"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Timeline</label>
+                                    <input
+                                        type="text"
+                                        value={timeline}
+                                        onChange={(e) => setTimeline(e.target.value)}
+                                        placeholder="30-60 days"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Location</label>
+                                    <input
+                                        type="text"
+                                        value={location}
+                                        onChange={(e) => setLocation(e.target.value)}
+                                        placeholder="City, State"
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button
+                                    className="generate-btn"
+                                    onClick={generateResponse}
+                                    disabled={!leadMessage || loading}
+                                    style={{ flex: 1 }}
+                                >
+                                    {loading ? 'Generating Response...' : 'Generate Response'}
+                                </button>
+                                {(leadMessage || context || response) && (
+                                    <button
+                                        className="clear-btn"
+                                        onClick={clearForm}
+                                        disabled={loading}
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+
+                            {loading && (
+                                <div className="loading">
+                                    <div className="loading-content">
+                                        <div className="spinner"></div>
+                                        <p>Analyzing lead context and generating personalized response{isStreaming && <span className="streaming-indicator"></span>}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {error && (
+                                <div className="error">
+                                    <strong>Connection Error</strong>
+                                    {error}
+                                </div>
+                            )}
+
+                            {response && response.response && (
+                                <div className="response-box">
+                                    <div className="response-header">
+                                        <h3>
+                                            Generated Response
+                                            {isStreaming && <span className="streaming-indicator"></span>}
+                                            {!isStreaming && response.word_count && (
+                                                <span className="confidence-score" style={{ background: calculateConfidence(response.word_count).color }}>
+                                                    {calculateConfidence(response.word_count).score} Confidence
+                                                </span>
+                                            )}
+                                        </h3>
+                                        <button className={`copy-btn ${copied ? 'copied' : ''}`} onClick={copyToClipboard}>
+                                            {copied ? 'Copied!' : 'Copy Response'}
+                                        </button>
+                                    </div>
+                                    <div className="response-text">
+                                        {response.response || 'Generating...'}
+                                    </div>
+                                    
+                                    <div className="action-buttons">
+                                        <button className="action-btn" onClick={() => window.print()}>Export PDF</button>
+                                        <button className="action-btn" onClick={() => {
+                                            const subject = encodeURIComponent('Real Estate Response');
+                                            const body = encodeURIComponent(response.response);
+                                            window.open(`mailto:?subject=${subject}&body=${body}`);
+                                        }}>Send via Email</button>
+                                        <button className="action-btn" onClick={generateResponse}>Regenerate</button>
+                                    </div>
+                                    
+                                    {response.generation_time !== '0' && (
+                                        <div className="metrics">
+                                            <div className="metric">
+                                                <div className="metric-value">{response.word_count}</div>
+                                                <div className="metric-label">Words</div>
+                                            </div>
+                                            <div className="metric">
+                                                <div className="metric-value">{response.generation_time}s</div>
+                                                <div className="metric-label">Generation Time</div>
+                                            </div>
+                                            <div className="metric">
+                                                <div className="metric-value">10-15 min</div>
+                                                <div className="metric-label">Time Saved</div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
