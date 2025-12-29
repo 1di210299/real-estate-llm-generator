@@ -104,7 +104,8 @@ app.post('/generate', async (req, res) => {
 
 app.listen(PORT, () => {
     console.log('=' .repeat(80));
-    console.log(`🚀 Backend running on http://localhost:${PORT}`);
+    console.log(`🚀 Backend running on port ${PORT}`);
     console.log(`✅ API Key loaded: ${process.env.OPENAI_API_KEY ? 'YES' : 'NO'}`);
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log('=' .repeat(80));
 });
