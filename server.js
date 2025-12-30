@@ -30,6 +30,13 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Test endpoint to serve HTML directly
+app.get('/test', (req, res) => {
+    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+});
+
 // Load system prompt
 const systemPrompt = fs.readFileSync(
     path.join(__dirname, 'docs/system_prompt.md'),
