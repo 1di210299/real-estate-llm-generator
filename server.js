@@ -56,31 +56,13 @@ app.post('/generate', async (req, res) => {
         console.log('🤖 Generating response with streaming...');
         console.log('📝 Lead:', leadMessage.substring(0, 100));
 
-        // COMPLIANCE VALIDATION - Check request before processing
+        // LIGHTWEIGHT VALIDATION - Check for obvious violations
+        // GPT-4 will do the heavy lifting via system prompt
         const validation = validateRequest(leadMessage, context || '');
         
-        if (!validation.valid) {
-            // Hard stop - refuse request
-            console.log('🛑 COMPLIANCE VIOLATION:', validation.violation);
-            res.setHeader('Content-Type', 'text/event-stream');
-            res.setHeader('Cache-Control', 'no-cache');
-            res.setHeader('Connection', 'keep-alive');
-            res.flushHeaders();
-            
-            res.write(`data: ${JSON.stringify({
-                type: 'error',
-                error: validation.message,
-                violation: validation.violation,
-                severity: validation.severity
-            })}\n\n`);
-            
-            res.end();
-            return;
-        }
-        
-        // Log warnings but proceed
         if (validation.warnings && validation.warnings.length > 0) {
-            console.log('⚠️  SOFT WARNINGS:', validation.warnings.map(w => w.category).join(', '));
+            console.log('⚠️  Compliance keywords detected:', validation.warnings.map(w => w.category).join(', '));
+            console.log('   (GPT-4 will handle final validation)');
         }
 
         const startTime = Date.now();

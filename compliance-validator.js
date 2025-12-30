@@ -22,9 +22,11 @@ const HARD_STOPS = {
     
     fair_housing: {
         keywords: [
-            'people like me', 'safe neighborhood', 'good families', 'demographics',
-            'racial composition', 'religious community', 'avoid areas', 'bad neighborhood',
-            'where should i not look', 'type of people', 'family oriented area'
+            'people like me', 'people like us', 'safe neighborhood', 'good families', 
+            'families like', 'demographics', 'racial composition', 'religious community', 
+            'avoid areas', 'bad neighborhood', 'where should i not look', 'type of people', 
+            'family oriented area', 'you know what i mean', 'mostly families',
+            'protected class', 'good schools and', 'safe areas', 'certain type'
         ],
         message: "I can provide objective data on schools, crime statistics, amenities, and commute times. I'd love to understand what specific features matter to you - like proximity to work, home size, specific amenities - and I'll show you all neighborhoods that match those criteria."
     },
