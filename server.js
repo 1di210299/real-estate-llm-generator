@@ -15,10 +15,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from current directory
-app.use(express.static(__dirname));
-
-// Diagnostic endpoint
+// Diagnostic endpoint FIRST
 app.get('/health', (req, res) => {
     const indexExists = fs.existsSync(path.join(__dirname, 'index.html'));
     const docsExists = fs.existsSync(path.join(__dirname, 'docs/system_prompt.md'));
@@ -31,11 +28,6 @@ app.get('/health', (req, res) => {
         docsExists: docsExists,
         apiKeyLoaded: !!process.env.OPENAI_API_KEY
     });
-});
-
-// Explicitly serve index.html at root
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Load system prompt
@@ -124,6 +116,14 @@ app.post('/generate', async (req, res) => {
         })}\n\n`);
         res.end();
     }
+});
+
+// Serve static files AFTER API routes
+app.use(express.static(__dirname));
+
+// Fallback to index.html for any other route (SPA behavior)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
