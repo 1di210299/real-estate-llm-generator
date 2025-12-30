@@ -578,7 +578,7 @@
                                             word_count: data.wordCount,
                                             generation_time: '0'
                                         });
-                                    if (data.type === 'done') {
+                                    } else if (data.type === 'done') {
                                         setIsStreaming(false);
                                         setResponse({
                                             response: fullText,
