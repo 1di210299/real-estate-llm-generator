@@ -66,20 +66,28 @@ app.post('/generate', async (req, res) => {
             messages: [
                 {
                     role: 'system',
-                    content: `You are a compliance validator for real estate communications. Analyze if the following request violates these boundaries:
+                    content: `You are a compliance validator for real estate communications. Only flag SEVERE violations:
 
-1. Financial/Investment Advice (401k, ROI, cap rates, loan recommendations, debt management)
-2. Legal Opinion (contract interpretation, legal rights, legal obligations)
-3. Fair Housing Violations (demographic steering, protected class discussion, coded language like "safe" or "good families" without objective data)
-4. Property Value Guarantees (appreciation promises, guaranteed returns)
-5. Medical/Safety Advice (health accommodations, medical assessments)
-6. Lending Terms (specific rates, loan approval guarantees)
+🚫 HARD VIOLATIONS (Must reject):
+1. Financial Advice: Recommending 401k withdrawals, specific investment returns, debt consolidation strategies, "you should invest" language
+2. Legal Opinion: Interpreting contracts, advising on legal rights/obligations, "this clause means..."
+3. Fair Housing: Demographic steering ("families like yours", "safe for your kind", protected class preferences)
+4. Value Guarantees: "This will appreciate 10%", "guaranteed returns", "can't lose money"
+5. Medical/Safety: Specific health accommodations, medical assessments
+6. Lending Promises: "I can get you 5% rate", loan approval guarantees
 
-Respond with ONLY "COMPLIANT" or "VIOLATION: [type]" followed by a brief redirect message if it's a violation.`
+✅ ALLOWED (Educational, not advice):
+- Explaining general concepts (closing costs, escrow, PMI, cap rates as concepts)
+- Market data without predictions ("average appreciation was...", not "will be")
+- Process education (steps in buying, what documents needed)
+- Comparing options WITHOUT recommending ("Option A has X, Option B has Y")
+- General pros/cons without "you should"
+
+Respond ONLY "COMPLIANT" or "VIOLATION: [type] - [brief reason]"`
                 },
                 {
                     role: 'user',
-                    content: `Lead Message: "${leadMessage}"\n\nContext: "${context || 'None provided'}"\n\nIs this request compliant?`
+                    content: `Lead Message: "${leadMessage}"\n\nContext: "${context || 'None provided'}"\n\nIs this compliant?`
                 }
             ],
             temperature: 0,
@@ -155,8 +163,6 @@ Respond with ONLY "COMPLIANT" or "VIOLATION: [type]" followed by a brief redirec
                 
                 // Force flush to send immediately
                 if (res.flush) res.flush();
-                
-                console.log(`📤 Sent chunk: ${content.substring(0, 30)}...`);
             }
         }
 
@@ -183,7 +189,7 @@ Respond with ONLY "COMPLIANT" or "VIOLATION: [type]" followed by a brief redirec
             word_count: wordCount,
             generation_time: generationTime,
             timestamp: new Date().toISOString(),
-            compliance_warnings: validation.warnings || []
+            compliance_warnings: responseValidation.warnings || []
         })}\n\n`);
 
         res.end();
