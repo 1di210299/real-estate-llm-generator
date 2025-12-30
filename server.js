@@ -3,6 +3,7 @@ const cors = require('cors');
 const { OpenAI } = require('openai');
 const fs = require('fs');
 const path = require('path');
+const { validateRequest, validateResponse } = require('./compliance-validator');
 
 // Only load .env file in development (Digital Ocean uses environment variables directly)
 if (process.env.NODE_ENV !== 'production') {
@@ -55,6 +56,33 @@ app.post('/generate', async (req, res) => {
         console.log('🤖 Generating response with streaming...');
         console.log('📝 Lead:', leadMessage.substring(0, 100));
 
+        // COMPLIANCE VALIDATION - Check request before processing
+        const validation = validateRequest(leadMessage, context || '');
+        
+        if (!validation.valid) {
+            // Hard stop - refuse request
+            console.log('🛑 COMPLIANCE VIOLATION:', validation.violation);
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.flushHeaders();
+            
+            res.write(`data: ${JSON.stringify({
+                type: 'error',
+                error: validation.message,
+                violation: validation.violation,
+                severity: validation.severity
+            })}\n\n`);
+            
+            res.end();
+            return;
+        }
+        
+        // Log warnings but proceed
+        if (validation.warnings && validation.warnings.length > 0) {
+            console.log('⚠️  SOFT WARNINGS:', validation.warnings.map(w => w.category).join(', '));
+        }
+
         const startTime = Date.now();
 
         // Set headers for SSE
@@ -105,12 +133,27 @@ app.post('/generate', async (req, res) => {
         const generationTime = ((Date.now() - startTime) / 1000).toFixed(2);
         console.log(`✅ Response generated! Words: ${wordCount}, Time: ${generationTime}s`);
 
+        // COMPLIANCE VALIDATION - Check response after generation
+        const responseValidation = validateResponse(fullResponse);
+        
+        if (!responseValidation.valid) {
+            console.log('⚠️  RESPONSE VIOLATIONS:', responseValidation.violations);
+            
+            // Send warning but still deliver response
+            res.write(`data: ${JSON.stringify({
+                type: 'warning',
+                message: 'This response may contain compliance issues. Please review carefully before sending.',
+                violations: responseValidation.violations
+            })}\n\n`);
+        }
+
         // Send final metadata
         res.write(`data: ${JSON.stringify({
             type: 'done',
             word_count: wordCount,
             generation_time: generationTime,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            compliance_warnings: validation.warnings || []
         })}\n\n`);
 
         res.end();
