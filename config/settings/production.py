@@ -9,24 +9,8 @@ import re
 
 DEBUG = False
 
-# Custom ALLOWED_HOSTS validation for internal IPs
-class AllowInternalIPs(list):
-    """Inherits from list to pass Django's type validation"""
-    def __init__(self, allowed_hosts):
-        super().__init__(allowed_hosts)
-        self.allowed_hosts = allowed_hosts
-    
-    def __contains__(self, host):
-        # Remove port if present
-        host = host.split(':')[0]
-        # Allow internal/private IPs (Docker, Kubernetes, DO internal)
-        if re.match(r'^(10\.|172\.|192\.168\.|100\.127\.)', host):
-            return True
-        return host in self.allowed_hosts
-
-# Wrap ALLOWED_HOSTS
-_original_allowed_hosts = ALLOWED_HOSTS
-ALLOWED_HOSTS = AllowInternalIPs(_original_allowed_hosts)
+# Allow all hosts - we'll validate in middleware
+ALLOWED_HOSTS = ['*']
 
 # Security settings
 SECURE_SSL_REDIRECT = True

@@ -1,7 +1,7 @@
 # =============================================================================
 # DIGITAL OCEAN APP PLATFORM CONFIGURATION
 # =============================================================================
-name: kp-real-estate-llm
+name: kp-real-estate-data-collector
 region: nyc
 
 # Django Backend API
@@ -107,7 +107,4 @@ databases:
   - name: db
     engine: PG
     version: "17"
-    production: true
-    cluster_name: app-0ce03331-db28-4bbb-b48e-5581a645561a
-    db_name: db
-    db_user: db
+    production: false
