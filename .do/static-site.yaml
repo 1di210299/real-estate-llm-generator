@@ -1,0 +1,28 @@
+{
+  "name": "data-collector",
+  "static_sites": [
+    {
+      "name": "frontend",
+      "github": {
+        "repo": "1di210299/real-estate-llm-generator",
+        "branch": "main",
+        "deploy_on_push": true
+      },
+      "source_dir": "data-collector-frontend",
+      "build_command": "npm run build",
+      "output_dir": "dist",
+      "routes": [
+        {
+          "path": "/"
+        }
+      ],
+      "envs": [
+        {
+          "key": "VITE_API_URL",
+          "value": "${django-backend.PUBLIC_URL}",
+          "type": "SECRET"
+        }
+      ]
+    }
+  ]
+}
