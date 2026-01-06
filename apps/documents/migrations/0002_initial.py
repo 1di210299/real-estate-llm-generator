@@ -12,6 +12,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("documents", "0001_enable_pgvector"),
         ("tenants", "0001_initial"),
     ]
 
