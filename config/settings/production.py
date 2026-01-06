@@ -72,8 +72,7 @@ CELERY_TASK_ALWAYS_EAGER = False
 # Cache settings for production
 CACHES['default']['TIMEOUT'] = 3600 * 24  # 24 hours
 
-# Limit allowed hosts strictly
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
+# ALLOWED_HOSTS is already wrapped with AllowInternalIPs at the top of this file
 
 # CORS - specify exact origins
 CORS_ALLOW_ALL_ORIGINS = False
