@@ -111,7 +111,23 @@ static_sites:
       - key: VITE_API_URL
         value: https://${web.PUBLIC_URL}
 
-  # Celery Worker para tareas en background
+# PostgreSQL Database
+databases:
+  - name: db
+    engine: PG
+    version: "15"
+    production: false
+    cluster_name: kp-real-estate-db
+    db_name: real_estate
+    db_user: postgres
+
+  - name: redis
+    engine: REDIS
+    version: "7"
+    production: false
+
+# Workers (Celery)
+workers:
   - name: celery-worker
     github:
       repo: 1di210299/real-estate-llm-generator
@@ -148,23 +164,6 @@ static_sites:
         value: ${OPENAI_API_KEY}
         type: SECRET
 
-# PostgreSQL Database
-databases:
-  - name: db
-    engine: PG
-    version: "15"
-    production: false
-    cluster_name: kp-real-estate-db
-    db_name: real_estate
-    db_user: postgres
-
-  - name: redis
-    engine: REDIS
-    version: "7"
-    production: false
-
-# Workers (Celery Beat para tareas programadas)
-workers:
   - name: celery-beat
     github:
       repo: 1di210299/real-estate-llm-generator
