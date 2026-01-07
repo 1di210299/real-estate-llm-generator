@@ -8,6 +8,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from core.utils.health import health_check
 from apps.ingestion.views import IngestURLView, IngestTextView, IngestBatchView, SavePropertyView
+from apps.properties.urls import router as properties_router
 
 
 urlpatterns = [
@@ -29,6 +30,10 @@ urlpatterns = [
     path('text/', IngestTextView.as_view(), name='ingest-text-direct'),
     path('batch/', IngestBatchView.as_view(), name='ingest-batch-direct'),
     path('save/', SavePropertyView.as_view(), name='save-property-direct'),
+    
+    # Rutas directas para properties (después de path stripping /properties → /)
+    # Cuando ingress match /properties, forward como /, /{id}/, etc
+    path('', include(properties_router.urls)),
 ]
 
 # Serve static and media files in development
