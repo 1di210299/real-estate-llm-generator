@@ -12,7 +12,7 @@ ingress:
       name: web
     match:
       path:
-        prefix: /api
+        prefix: /v1
   - component:
       name: web
     match:
@@ -23,6 +23,11 @@ ingress:
     match:
       path:
         prefix: /static
+  - component:
+      name: web
+    match:
+      path:
+        prefix: /health
   - component:
       name: frontend
     match:
@@ -80,7 +85,7 @@ services:
     repo: 1di210299/real-estate-llm-generator
   health_check:
     failure_threshold: 3
-    http_path: /api/health/
+    http_path: /health/
     initial_delay_seconds: 60
     period_seconds: 30
     success_threshold: 1
@@ -95,7 +100,7 @@ static_sites:
   envs:
   - key: VITE_API_URL
     scope: BUILD_TIME
-    value: ${web.PUBLIC_URL}/api
+    value: ${web.PUBLIC_URL}
   github:
     branch: main
     deploy_on_push: true
