@@ -52,7 +52,23 @@ function App() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [confidence, setConfidence] = useState(0)
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+  // API Base URL configuration with intelligent fallback
+  const getApiBase = () => {
+    let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    
+    // Remover trailing slash si existe
+    baseUrl = baseUrl.replace(/\/$/, '')
+    
+    // Si ya tiene /api, retornar tal cual
+    if (baseUrl.endsWith('/api')) {
+      return baseUrl
+    }
+    
+    // Si no tiene /api, agregarlo
+    return `${baseUrl}/api`
+  }
+
+  const API_BASE = getApiBase()
 
   const WEBSITES: Record<string, WebsiteConfig> = {
     encuentra24: {
