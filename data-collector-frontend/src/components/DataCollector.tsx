@@ -53,16 +53,20 @@ function App() {
   const [confidence, setConfidence] = useState(0)
 
   // API Base URL configuration
-  const getApiBase = () => {
-    let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    
-    // Remover trailing slash si existe
-    if (baseUrl.endsWith('/')) {
-      baseUrl = baseUrl.slice(0, -1)
-    }
-    
+ const getApiBase = () => {
+  let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  
+  // Remover trailing slash si existe
+  baseUrl = baseUrl.replace(/\/$/, '')
+  
+  // Si ya tiene /api, retornar tal cual
+  if (baseUrl.endsWith('/api')) {
     return baseUrl
   }
+  
+  // Si no tiene /api, agregarlo
+  return `${baseUrl}/api`
+}
 
   const API_BASE = getApiBase()
 
