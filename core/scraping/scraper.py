@@ -5,6 +5,7 @@ Falls back to requests for simple HTML pages.
 
 import asyncio
 import logging
+import random
 from typing import Dict, Optional
 from urllib.parse import urlparse
 
@@ -53,11 +54,24 @@ class WebScraper:
         're.cr',
     ]
     
+    # Pool of realistic user agents
+    USER_AGENTS = [
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    ]
+    
     def __init__(self):
         self.timeout = settings.SCRAPING_TIMEOUT_SECONDS
         self.user_agent = settings.SCRAPING_USER_AGENT
         self.rate_limit = settings.SCRAPING_RATE_LIMIT_PER_SECOND
         self.last_request_time = {}
+    
+    def _get_random_user_agent(self):
+        """Get a random user agent from the pool."""
+        return random.choice(self.USER_AGENTS)
     
     async def _should_use_playwright(self, url: str) -> bool:
         """Determine if URL requires Playwright (JavaScript rendering)."""
@@ -77,13 +91,30 @@ class WebScraper:
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-web-security',
-                    '--disable-features=IsolateOrigins,site-per-process'
+                    '--disable-features=IsolateOrigins,site-per-process',
+                    '--disable-infobars',
+                    '--window-size=1920,1080',
+                    '--start-maximized',
+                    '--disable-extensions',
+                    '--no-first-run',
+                    '--no-default-browser-check',
+                    '--disable-default-apps',
+                    '--disable-popup-blocking',
+                    '--disable-translate',
+                    '--disable-background-timer-throttling',
+                    '--disable-renderer-backgrounding',
+                    '--disable-device-discovery-notifications',
+                    '--disable-gpu',
+                    '--no-zygote'
                 ]
             )
             
             try:
+                # Random delay before starting (2-5 seconds)
+                await asyncio.sleep(random.uniform(2, 5))
+                
                 context = await browser.new_context(
-                    user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                    user_agent=self._get_random_user_agent(),
                     viewport={'width': 1920, 'height': 1080},
                     locale='es-CR',
                     timezone_id='America/Costa_Rica',
@@ -104,42 +135,152 @@ class WebScraper:
                 
                 # Add stealth scripts to hide automation
                 await context.add_init_script("""
-                    // Overwrite the `plugins` property to use a custom getter.
+                    // Remove webdriver property
                     Object.defineProperty(navigator, 'webdriver', {
                         get: () => undefined
                     });
                     
-                    // Overwrite the `plugins` property to use a custom getter.
+                    // Mock plugins
                     Object.defineProperty(navigator, 'plugins', {
                         get: () => [1, 2, 3, 4, 5]
                     });
                     
-                    // Overwrite the `languages` property to use a custom getter.
+                    // Mock languages
                     Object.defineProperty(navigator, 'languages', {
                         get: () => ['es-CR', 'es', 'en-US', 'en']
                     });
                     
-                    // Pass the Chrome Test.
+                    // Mock Chrome runtime
                     window.chrome = {
                         runtime: {}
                     };
                     
-                    // Pass the Permissions Test.
+                    // Mock Permissions API
                     const originalQuery = window.navigator.permissions.query;
                     window.navigator.permissions.query = (parameters) => (
                         parameters.name === 'notifications' ?
                             Promise.resolve({ state: Notification.permission }) :
                             originalQuery(parameters)
                     );
+                    
+                    // Override toString methods to hide proxy behavior
+                    const originalToString = Function.prototype.toString;
+                    Function.prototype.toString = function() {
+                        if (this === window.navigator.permissions.query) {
+                            return 'function query() { [native code] }';
+                        }
+                        return originalToString.call(this);
+                    };
+                    
+                    // Mock hardware concurrency
+                    Object.defineProperty(navigator, 'hardwareConcurrency', {
+                        get: () => 8
+                    });
+                    
+                    // Mock device memory
+                    Object.defineProperty(navigator, 'deviceMemory', {
+                        get: () => 8
+                    });
+                    
+                    // Mock platform
+                    Object.defineProperty(navigator, 'platform', {
+                        get: () => 'MacIntel'
+                    });
+                    
+                    // Mock screen properties
+                    Object.defineProperty(screen, 'colorDepth', {
+                        get: () => 24
+                    });
+                    
+                    Object.defineProperty(screen, 'pixelDepth', {
+                        get: () => 24
+                    });
+                    
+                    // Add fake battery API
+                    if (!navigator.getBattery) {
+                        navigator.getBattery = () => Promise.resolve({
+                            charging: true,
+                            chargingTime: 0,
+                            dischargingTime: Infinity,
+                            level: 1.0,
+                            addEventListener: () => {},
+                            removeEventListener: () => {}
+                        });
+                    }
+                    
+                    // Mock connection API
+                    Object.defineProperty(navigator, 'connection', {
+                        get: () => ({
+                            effectiveType: '4g',
+                            rtt: 50,
+                            downlink: 10,
+                            saveData: false
+                        })
+                    });
+                    
+                    // Hide automation in iframe
+                    Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+                        get: function() {
+                            const win = this.contentWindowGetter.call(this);
+                            if (win) {
+                                try {
+                                    win.navigator.webdriver = undefined;
+                                } catch(e) {}
+                            }
+                            return win;
+                        }
+                    });
+                    HTMLIFrameElement.prototype.contentWindowGetter = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow').get;
+                    
+                    // Add missing window properties
+                    window.chrome.app = {
+                        isInstalled: false,
+                        InstallState: {
+                            DISABLED: 'disabled',
+                            INSTALLED: 'installed',
+                            NOT_INSTALLED: 'not_installed'
+                        },
+                        RunningState: {
+                            CANNOT_RUN: 'cannot_run',
+                            READY_TO_RUN: 'ready_to_run',
+                            RUNNING: 'running'
+                        }
+                    };
+                    
+                    window.chrome.csi = function() {};
+                    window.chrome.loadTimes = function() {};
+                    
+                    // Mock OuterHTML to not show iframe[srcdoc]
+                    const originalGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+                    Object.getOwnPropertyDescriptor = function(target, property) {
+                        if (target === HTMLIFrameElement.prototype && property === 'srcdoc') {
+                            return undefined;
+                        }
+                        return originalGetOwnPropertyDescriptor(target, property);
+                    };
                 """)
                 
                 page = await context.new_page()
                 
-                # Navigate with longer timeout and less strict wait
-                await page.goto(url, wait_until='networkidle', timeout=60000)
+                # Random mouse movements to simulate human behavior
+                await page.mouse.move(random.randint(100, 500), random.randint(100, 500))
+                await asyncio.sleep(random.uniform(0.5, 1.5))
                 
-                # Wait a bit for any lazy-loaded content
-                await page.wait_for_timeout(2000)
+                # Navigate with longer timeout and less strict wait
+                await page.goto(url, wait_until='domcontentloaded', timeout=60000)
+                
+                # Random scroll to simulate human behavior
+                await page.evaluate(f'window.scrollTo(0, {random.randint(100, 300)})')
+                await asyncio.sleep(random.uniform(1, 2))
+                
+                # Wait for network to be idle
+                try:
+                    await page.wait_for_load_state('networkidle', timeout=15000)
+                except:
+                    logger.warning("Network idle timeout - continuing anyway")
+                
+                # Wait a bit for any lazy-loaded content with random delay
+                await page.wait_for_timeout(random.randint(2000, 4000))
                 
                 # Check if it's encuentra24.com/costa-rica-es to extract clean text
                 if 'encuentra24.com/costa-rica-es' in url:
@@ -148,8 +289,8 @@ class WebScraper:
                         # Get title from page
                         title = await page.title()
                         
-                        # Wait longer for dynamic content to load
-                        await page.wait_for_timeout(3000)
+                        # Wait longer for dynamic content to load with random delay
+                        await page.wait_for_timeout(random.randint(3000, 5000))
                         
                         # Extract full body text instead of sections (content loads dynamically)
                         body = await page.query_selector('body')
