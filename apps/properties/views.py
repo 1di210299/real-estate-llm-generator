@@ -24,32 +24,18 @@ class PropertyViewSet(viewsets.ModelViewSet):
     Supports filtering, searching, and role-based access.
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'property_type', 'location', 'source_website']
     search_fields = ['property_name', 'description', 'location']
     ordering_fields = ['created_at', 'price_usd', 'property_name', 'source_website']
     ordering = ['-created_at']
     
-    def get_permissions(self):
-        """Allow read-only access without authentication for list and retrieve."""
-        if self.action in ['list', 'retrieve']:
-            return [AllowAny()]
-        return [IsAuthenticated()]
-    
     def get_queryset(self):
-        """Filter properties by tenant and user role."""
+        """Return all active properties."""
         queryset = Property.objects.filter(
             is_active=True
         ).select_related('tenant', 'verified_by').prefetch_related('images')
-        
-        # If authenticated, filter by tenant
-        if self.request.user.is_authenticated:
-            queryset = queryset.filter(tenant=self.request.user.tenant)
-            
-            # Filter by role access
-            if self.request.user.role != 'admin':
-                queryset = queryset.filter(user_roles__contains=[self.request.user.role])
         
         # Query params filtering
         min_price = self.request.query_params.get('min_price')
