@@ -18,10 +18,11 @@ class TenantMiddleware(MiddlewareMixin):
         
         print(f"🔍 TenantMiddleware - Path: {request.path}")
         
-        # Skip tenant check for admin, auth, health, static, and ingest endpoints
+        # Skip tenant check for admin, auth, health, static, ingest, and properties endpoints
         if (request.path.startswith('/admin/') or 
             request.path.startswith('/api/v1/auth/') or
             request.path.startswith('/api/v1/ingest/') or
+            request.path.startswith('/api/v1/properties/') or
             request.path.startswith('/api/health/') or
             request.path.startswith('/static/') or
             request.path.startswith('/media/')):
