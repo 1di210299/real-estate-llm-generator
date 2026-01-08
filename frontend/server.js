@@ -23,9 +23,16 @@ apiPaths.forEach(apiPath => {
   app.use(apiPath, createProxyMiddleware({
     target: BACKEND_URL,
     changeOrigin: true,
+    ws: true,  // WebSocket support
     logLevel: 'debug',
     onProxyReq: (proxyReq, req, res) => {
       console.log(`🔀 Proxying ${req.method} ${req.url} -> ${BACKEND_URL}${req.url}`);
+      // Forward all headers
+      proxyReq.setHeader('X-Forwarded-Host', req.headers.host || '');
+      proxyReq.setHeader('X-Real-IP', req.ip || '');
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      console.log(`✅ Proxy response: ${proxyRes.statusCode} from ${req.url}`);
     },
     onError: (err, req, res) => {
       console.error('❌ Proxy error:', err.message);
