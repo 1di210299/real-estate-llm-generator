@@ -13,16 +13,16 @@ from apps.properties.urls import router as properties_router
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/health/', health_check, name='health_check'),
+    path('health/', health_check, name='health_check'),
     
-    # API routes under /api/ prefix
-    path('api/auth/', include('apps.users.urls')),
-    path('api/tenants/', include('apps.tenants.urls')),
-    path('api/properties/', include('apps.properties.urls')),
-    path('api/documents/', include('apps.documents.urls')),
-    path('api/conversations/', include('apps.conversations.urls')),
-    path('api/chat/', include('apps.chat.urls')),
-    path('api/ingest/', include('apps.ingestion.urls')),
+    # Direct routes - simple and clean
+    path('auth/', include('apps.users.urls')),
+    path('tenants/', include('apps.tenants.urls')),
+    path('properties/', include('apps.properties.urls')),
+    path('documents/', include('apps.documents.urls')),
+    path('conversations/', include('apps.conversations.urls')),
+    path('chat/', include('apps.chat.urls')),
+    path('ingest/', include('apps.ingestion.urls')),
 ]
 
 # Serve static and media files in development

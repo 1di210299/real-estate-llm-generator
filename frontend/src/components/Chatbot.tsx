@@ -35,7 +35,7 @@ interface ApiResponse {
 
 const API_URL = import.meta.env.VITE_API_URL 
   ? `${import.meta.env.VITE_API_URL}/chat/`
-  : 'http://localhost:8000/api/chat/';
+  : 'http://localhost:8000/chat/';
 
 const EXAMPLE_QUERIES = [
   { text: '¿Propiedades en Tamarindo?', icon: '🏖️', label: 'Playas' },

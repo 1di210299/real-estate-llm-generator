@@ -12,7 +12,32 @@ ingress:
       name: web
     match:
       path:
-        prefix: /api
+        prefix: /chat
+  - component:
+      name: web
+    match:
+      path:
+        prefix: /properties
+  - component:
+      name: web
+    match:
+      path:
+        prefix: /conversations
+  - component:
+      name: web
+    match:
+      path:
+        prefix: /documents
+  - component:
+      name: web
+    match:
+      path:
+        prefix: /ingest
+  - component:
+      name: web
+    match:
+      path:
+        prefix: /health
   - component:
       name: web
     match:
@@ -81,7 +106,7 @@ services:
     repo: 1di210299/real-estate-llm-generator
   health_check:
     failure_threshold: 3
-    http_path: /api/health/
+    http_path: /health/
     initial_delay_seconds: 60
     period_seconds: 30
     success_threshold: 1
@@ -94,7 +119,7 @@ services:
   envs:
   - key: VITE_API_URL
     scope: BUILD_TIME
-    value: ${APP_URL}/api
+    value: ${APP_URL}
   - key: PORT
     scope: RUN_TIME
     value: "8080"
