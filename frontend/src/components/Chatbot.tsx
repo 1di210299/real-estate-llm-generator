@@ -34,7 +34,7 @@ interface ApiResponse {
 }
 
 const API_URL = import.meta.env.VITE_API_URL 
-  ? `${import.meta.env.VITE_API_URL}/chat/`
+  ? `${import.meta.env.VITE_API_URL}/chat`
   : 'http://localhost:8000/chat/';
 
 // DEBUG LOGS
