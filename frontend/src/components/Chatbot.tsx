@@ -37,6 +37,13 @@ const API_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/chat/`
   : 'http://localhost:8000/chat/';
 
+// DEBUG LOGS
+console.log('🔧 Chatbot Configuration:');
+console.log('  - VITE_API_URL:', import.meta.env.VITE_API_URL);
+console.log('  - Final API_URL:', API_URL);
+console.log('  - Mode:', import.meta.env.MODE);
+console.log('  - All env vars:', import.meta.env);
+
 const EXAMPLE_QUERIES = [
   { text: '¿Propiedades en Tamarindo?', icon: '🏖️', label: 'Playas' },
   { text: 'Casas con 3 cuartos bajo $300K', icon: '🏠', label: '3 habitaciones' },
@@ -86,6 +93,9 @@ Puedes preguntar sobre:
     setInputValue('');
     setIsLoading(true);
 
+    console.log('📤 Sending message to:', API_URL);
+    console.log('📤 Message payload:', { message: text, conversation_id: conversationId });
+
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
@@ -98,7 +108,12 @@ Puedes preguntar sobre:
         }),
       });
 
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response ok:', response.ok);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 

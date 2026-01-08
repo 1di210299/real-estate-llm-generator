@@ -10,6 +10,8 @@ from core.utils.health import health_check
 from apps.ingestion.views import IngestURLView, IngestTextView, IngestBatchView, SavePropertyView
 from apps.properties.urls import router as properties_router
 
+print("🚀 MAIN URLS LOADED - Django starting up")
+print("=" * 50)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -24,6 +26,10 @@ urlpatterns = [
     path('chat/', include('apps.chat.urls')),
     path('ingest/', include('apps.ingestion.urls')),
 ]
+
+print("✅ URL Patterns configured:")
+for pattern in urlpatterns:
+    print(f"  - {pattern.pattern}")
 
 # Serve static and media files in development
 if settings.DEBUG:

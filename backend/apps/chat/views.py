@@ -34,6 +34,13 @@ class ChatView(APIView):
     def post(self, request):
         """Process chat message with RAG."""
         
+        # DEBUG LOGS
+        print(f"🎯 ChatView POST - Path: {request.path}")
+        print(f"🎯 ChatView POST - Full Path: {request.get_full_path()}")
+        print(f"🎯 ChatView POST - Headers: {dict(request.headers)}")
+        print(f"🎯 ChatView POST - Data: {request.data}")
+        logger.info(f"Chat request received: path={request.path}, data={request.data}")
+        
         message_text = request.data.get('message')
         conversation_id = request.data.get('conversation_id')
         stream = request.data.get('stream', False)
