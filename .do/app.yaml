@@ -13,41 +13,49 @@ ingress:
         prefix: /chat
     component:
       name: web
+      preserve_path_prefix: true
   - match:
       path:
         prefix: /properties
     component:
       name: web
+      preserve_path_prefix: true
   - match:
       path:
         prefix: /conversations
     component:
       name: web
+      preserve_path_prefix: true
   - match:
       path:
         prefix: /documents
     component:
       name: web
+      preserve_path_prefix: true
   - match:
       path:
         prefix: /ingest
     component:
       name: web
+      preserve_path_prefix: true
   - match:
       path:
         prefix: /health
     component:
       name: web
+      preserve_path_prefix: true
   - match:
       path:
         prefix: /admin
     component:
       name: web
+      preserve_path_prefix: true
   - match:
       path:
         prefix: /static
     component:
       name: web
+      preserve_path_prefix: true
   - match:
       path:
         prefix: /
