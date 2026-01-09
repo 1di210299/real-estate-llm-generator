@@ -534,21 +534,29 @@ class SavePropertyView(APIView):
             logger.info(f"  - Name: {property_obj.property_name}")
             logger.info(f"  - Price: ${property_obj.price_usd}")
             
-            # Generate embeddings for semantic search
-            logger.info("🔮 Generating embeddings for property...")
-            try:
-                embedding = generate_property_embedding(property_obj)
-                if embedding:
-                    property_obj.embedding = embedding
-                    property_obj.save(update_fields=['embedding'])
-                    logger.info(f"✅ Embedding generated successfully (dimension: {len(embedding)})")
-                else:
-                    logger.warning("⚠️ Failed to generate embedding - property saved without embedding")
-            except Exception as e:
-                logger.error(f"❌ Error generating embedding: {e}", exc_info=True)
-                logger.warning("⚠️ Property saved but embedding generation failed")
+            # Generate embeddings in background thread (non-blocking)
+            logger.info("🔮 Starting background embedding generation...")
+            import threading
             
-            # Return serialized property
+            def generate_embedding_background():
+                """Generate embedding in background thread."""
+                try:
+                    from core.llm.embeddings import generate_property_embedding
+                    embedding = generate_property_embedding(property_obj)
+                    if embedding:
+                        property_obj.embedding = embedding
+                        property_obj.save(update_fields=['embedding'])
+                        logger.info(f"✅ [BACKGROUND] Embedding generated: {property_obj.property_name}")
+                    else:
+                        logger.warning(f"⚠️ [BACKGROUND] Embedding generation failed: {property_obj.id}")
+                except Exception as e:
+                    logger.error(f"❌ [BACKGROUND] Error generating embedding: {e}", exc_info=True)
+            
+            thread = threading.Thread(target=generate_embedding_background, daemon=True)
+            thread.start()
+            logger.info("✅ Background embedding thread started")
+            
+            # Return serialized property immediately without waiting for embedding
             serializer = PropertyDetailSerializer(property_obj)
             
             return Response({

@@ -97,6 +97,71 @@ def generate_property_embedding_task(property_id):
         embedding = embeddings.embed_query(property_obj.content_for_search)
         property_obj.embedding = embedding
         property_obj.save(update_fields=['embedding', 'content_for_search'])
+
+
+@shared_task(bind=True, max_retries=3)
+def generate_embedding_async(self, property_id: str):
+    """
+    Generate embedding for a property asynchronously (NEW version).
+    Uses the new embedding system from core.llm.embeddings
+    
+    Args:
+        property_id: UUID of the property
+        
+    Returns:
+        dict with success status and details
+    """
+    try:
+        from apps.properties.models import Property
+        from core.llm.embeddings import generate_property_embedding
+        
+        logger.info(f"🔮 [ASYNC] Starting embedding generation for property: {property_id}")
+        
+        # Get property
+        property_obj = Property.objects.get(id=property_id)
+        
+        # Generate embedding
+        embedding = generate_property_embedding(property_obj)
+        
+        if embedding:
+            property_obj.embedding = embedding
+            property_obj.save(update_fields=['embedding'])
+            logger.info(f"✅ [ASYNC] Embedding generated successfully for: {property_obj.property_name} (dimension: {len(embedding)})")
+            return {
+                'success': True,
+                'property_id': str(property_id),
+                'property_name': property_obj.property_name,
+                'dimension': len(embedding)
+            }
+        else:
+            logger.warning(f"⚠️ [ASYNC] Failed to generate embedding for: {property_id}")
+            return {
+                'success': False,
+                'property_id': str(property_id),
+                'error': 'Embedding generation returned None'
+            }
+            
+    except Property.DoesNotExist:
+        logger.error(f"❌ [ASYNC] Property not found: {property_id}")
+        return {
+            'success': False,
+            'property_id': str(property_id),
+            'error': 'Property not found'
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ [ASYNC] Error generating embedding for {property_id}: {e}", exc_info=True)
+        
+        # Retry with exponential backoff
+        if self.request.retries < self.max_retries:
+            logger.info(f"🔄 Retrying... (attempt {self.request.retries + 1}/{self.max_retries})")
+            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+        
+        return {
+            'success': False,
+            'property_id': str(property_id),
+            'error': str(e)
+        }
         
         logger.info(f"Generated embedding for property {property_id}")
         
