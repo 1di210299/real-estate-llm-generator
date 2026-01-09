@@ -391,7 +391,7 @@ class Property(models.Model):
     
     def get_price_per_sqm(self):
         """Calculate price per square meter."""
-        if self.square_meters and self.square_meters > 0:
+        if self.price_usd and self.square_meters and self.square_meters > 0:
             return self.price_usd / self.square_meters
         return None
     
