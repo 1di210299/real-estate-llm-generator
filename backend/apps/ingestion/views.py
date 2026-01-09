@@ -18,8 +18,68 @@ from core.llm.embeddings import generate_property_embedding
 from core.utils.website_detector import detect_source_website
 from apps.properties.models import Property
 from apps.properties.serializers import PropertyDetailSerializer
+from .serializers import SupportedWebsiteSerializer
 
 logger = logging.getLogger(__name__)
+
+
+class SupportedWebsitesView(APIView):
+    """
+    Endpoint to get list of supported websites with their configurations.
+    
+    GET /ingest/supported-websites/
+    """
+    
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Return list of supported websites."""
+        
+        # Define supported websites with their configurations
+        websites = [
+            {
+                'id': 'brevitas',
+                'name': 'Brevitas',
+                'url': 'https://brevitas.com',
+                'color': '#f59e0b',
+                'active': True,
+                'has_extractor': 'brevitas.com' in EXTRACTORS
+            },
+            {
+                'id': 'encuentra24',
+                'name': 'Encuentra24',
+                'url': 'https://encuentra24.com/costa-rica-en',
+                'color': '#10b981',
+                'active': True,
+                'has_extractor': 'encuentra24.com' in EXTRACTORS
+            },
+            {
+                'id': 'coldwellbanker',
+                'name': 'Coldwell Banker',
+                'url': 'https://www.coldwellbankercostarica.com',
+                'color': '#8b5cf6',
+                'active': True,
+                'has_extractor': 'coldwellbankercostarica.com' in EXTRACTORS
+            },
+            {
+                'id': 'other',
+                'name': 'Other Sources',
+                'url': None,
+                'color': '#6b7280',
+                'active': True,
+                'has_extractor': False
+            }
+        ]
+        
+        serializer = SupportedWebsiteSerializer(websites, many=True)
+        
+        return Response({
+            'status': 'success',
+            'websites': serializer.data,
+            'total_extractors': len(EXTRACTORS),
+            'extractor_sites': list(EXTRACTORS.keys())
+        }, status=status.HTTP_200_OK)
 
 
 class IngestURLView(APIView):

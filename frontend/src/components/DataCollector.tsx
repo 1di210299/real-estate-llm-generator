@@ -34,16 +34,19 @@ interface CategoryConfig {
 }
 
 interface WebsiteConfig {
+  id: string
   name: string
-  icon: string
+  url: string | null
   color: string
+  active: boolean
+  has_extractor: boolean
 }
 
 function App() {
   const [inputType, setInputType] = useState<'url' | 'text'>('url')
   const [url, setUrl] = useState('')
   const [text, setText] = useState('')
-  const [sourceWebsite, setSourceWebsite] = useState('encuentra24')
+  const [sourceWebsite, setSourceWebsite] = useState('brevitas')
   const [loading, setLoading] = useState(false)
   const [extractedProperty, setExtractedProperty] = useState<PropertyData | null>(null)
   const [error, setError] = useState('')
@@ -51,6 +54,8 @@ function App() {
   const [properties, setProperties] = useState<PropertyData[]>([])
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [confidence, setConfidence] = useState(0)
+  const [supportedWebsites, setSupportedWebsites] = useState<WebsiteConfig[]>([])
+  const [websitesLoading, setWebsitesLoading] = useState(true)
 
   // API Base URL configuration
   const getApiBase = () => {
@@ -77,31 +82,7 @@ function App() {
   const API_BASE = getApiBase()
   console.log('🌐 [API CONFIG] API_BASE será usado en todas las requests:', API_BASE)
 
-  const WEBSITES: Record<string, WebsiteConfig> = {
-    encuentra24: {
-      name: 'Encuentra24',
-      icon: '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>',
-      color: '#10b981'
-    },
-    crrealestate: {
-      name: 'CR Real Estate',
-      icon: '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd"></path></svg>',
-      color: '#3b82f6'
-    },
-    coldwellbanker: {
-      name: 'Coldwell Banker',
-      icon: '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"></path><path d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z"></path></svg>',
-      color: '#8b5cf6'
-    },
-    other: {
-      name: 'Other Sources',
-      icon: '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path></svg>',
-      color: '#6b7280'
-    }
-  }
-
   const CATEGORIES: Record<string, CategoryConfig> = {
-    'proyectos-nuevos': {
       name: 'New Projects',
       icon: '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V8a2 2 0 00-2-2h-5L9 4H4zm7 5a1 1 0 00-2 0v1H8a1 1 0 000 2h1v1a1 1 0 002 0v-1h1a1 1 0 000-2h-1V9z" clip-rule="evenodd"></path></svg>',
       color: '#8b5cf6'
@@ -154,8 +135,27 @@ function App() {
   }
 
   useEffect(() => {
+    loadSupportedWebsites()
     loadHistoryFromBackend()
   }, [])
+  
+  const loadSupportedWebsites = async () => {
+    try {
+      const url = `${API_BASE}/ingest/supported-websites/`
+      console.log('📥 [FETCH] Loading supported websites from:', url)
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      console.log('📥 [FETCH] Supported websites:', data.websites)
+      setSupportedWebsites(data.websites)
+      setWebsitesLoading(false)
+    } catch (error) {
+      console.error('Error loading supported websites:', error)
+      setWebsitesLoading(false)
+    }
+  }
 
   const getCategoryFromUrl = (url: string): string => {
     if (!url) return 'other'
@@ -190,8 +190,8 @@ function App() {
     if (!url) return 'other'
     const urlLower = url.toLowerCase()
     
+    if (urlLower.includes('brevitas')) return 'brevitas'
     if (urlLower.includes('encuentra24')) return 'encuentra24'
-    if (urlLower.includes('crrealestate') || urlLower.includes('cr-realestate')) return 'crrealestate'
     if (urlLower.includes('coldwellbanker')) return 'coldwellbanker'
     
     return 'other'
@@ -517,19 +517,46 @@ function App() {
               {/* Website Source Selector */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Source Website
+                  Source Website {websitesLoading && <span className="text-xs text-gray-400">(Loading...)</span>}
                 </label>
                 <select 
                   value={sourceWebsite}
                   onChange={(e) => setSourceWebsite(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  disabled={websitesLoading}
                 >
-                  <option value="encuentra24">Encuentra24</option>
-                  <option value="crrealestate">CR Real Estate</option>
-                  <option value="coldwellbanker">Coldwell Banker</option>
-                  <option value="other">Other / Manual</option>
+                  {supportedWebsites.filter(w => w.active).map(website => (
+                    <option key={website.id} value={website.id}>
+                      {website.name} {website.has_extractor ? '✓' : '(LLM)'}
+                    </option>
+                  ))}
                 </select>
-                <p className="mt-1 text-xs text-gray-500">Select the website you're scraping from</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {supportedWebsites.filter(w => w.url).map(website => (
+                    <a 
+                      key={website.id}
+                      href={website.url!} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full hover:bg-gray-100 transition"
+                      style={{ 
+                        color: website.color,
+                        border: `1px solid ${website.color}33`
+                      }}
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                      </svg>
+                      {website.name}
+                      {website.has_extractor && <span className="text-green-600">✓</span>}
+                    </a>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  💡 Click website name to open in new tab. Copy <strong>individual property URLs</strong> (not search/listing pages).
+                  <br />
+                  ✓ = Fast extraction (site-specific), (LLM) = AI-powered extraction
+                </p>
               </div>
 
               {/* URL Input */}
@@ -584,7 +611,11 @@ function App() {
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
               <div className="spinner"></div>
               <p className="text-gray-600 mt-4">Processing property data...</p>
-              <p className="text-sm text-gray-500 mt-2">Scraping from <span className="font-semibold">{WEBSITES[sourceWebsite]?.name || 'Unknown'}</span></p>
+              <p className="text-sm text-gray-500 mt-2">
+                Scraping from <span className="font-semibold">
+                  {supportedWebsites.find(w => w.id === sourceWebsite)?.name || 'Unknown'}
+                </span>
+              </p>
               <p className="text-xs text-gray-400 mt-1">This may take 10-30 seconds</p>
             </div>
           )}
