@@ -468,6 +468,11 @@ class SavePropertyView(APIView):
                 }
                 property_data['status'] = status_mapping.get(property_data['status'], 'available')
             
+            # Ensure property_type has a default value if missing or None
+            if not property_data.get('property_type'):
+                property_data['property_type'] = 'house'  # Default to 'house' if not specified
+                logger.info(f"⚠️ property_type was missing/null, defaulting to 'house'")
+            
             # Build location from address/city/province if location is empty
             if not property_data.get('location') and (property_data.get('city') or property_data.get('address')):
                 location_parts = []
