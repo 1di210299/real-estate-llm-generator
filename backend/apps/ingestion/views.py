@@ -495,15 +495,17 @@ class SavePropertyView(APIView):
             # Create PropertyImage objects from URL list
             if images_data:
                 logger.info(f"Creating {len(images_data)} PropertyImage objects...")
+                created_count = 0
                 for idx, image_url in enumerate(images_data):
                     if isinstance(image_url, str):  # Only process if it's a URL string
                         PropertyImage.objects.create(
                             property=property_obj,
                             image_url=image_url,
-                            order=idx,
-                            is_primary=(idx == 0)  # First image is primary
+                            order=created_count,
+                            is_primary=(created_count == 0)  # First image is primary
                         )
-                logger.info(f"✓ Created {len(images_data)} images")
+                        created_count += 1
+                logger.info(f"✓ Created {created_count} images")
             
             # Set amenities (ArrayField - can be set directly)
             if amenities_data:

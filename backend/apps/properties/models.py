@@ -437,9 +437,8 @@ class PropertyImage(models.Model):
         related_name='images'
     )
     
-    image_url = models.URLField(
-        max_length=500,
-        help_text=_('Image URL')
+    image_url = models.TextField(
+        help_text=_('Image URL - no length limit to support URLs with many parameters')
     )
     
     caption = models.CharField(
