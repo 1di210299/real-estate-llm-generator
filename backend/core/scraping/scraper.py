@@ -63,6 +63,7 @@ class WebScraper:
     
     # Sites with Cloudflare or strong anti-bot (require residential proxy)
     CLOUDFLARE_PROTECTED_DOMAINS = [
+        'brevitas.com',  # Has anti-bot protection (403 Forbidden)
         'encuentra24.com',  # Has Cloudflare protection
         # Add more as needed: 'example.com', 'another-site.com'
     ]
@@ -110,16 +111,29 @@ class WebScraper:
     def _needs_cloudflare_bypass(self, url: str) -> bool:
         """Check if URL requires Cloudflare bypass (Scrapfly or proxy)."""
         domain = urlparse(url).netloc
+        logger.info(f"🔍 [BYPASS CHECK] Checking domain: {domain}")
+        logger.info(f"🔍 [BYPASS CHECK] Protected domains list: {self.CLOUDFLARE_PROTECTED_DOMAINS}")
         needs_bypass = any(protected_domain in domain for protected_domain in self.CLOUDFLARE_PROTECTED_DOMAINS)
         if needs_bypass:
             logger.info(f"🛡️ Cloudflare-protected site detected: {domain}")
+        else:
+            logger.info(f"✅ Domain not in protected list: {domain}")
         return needs_bypass
     
     def _should_use_scrapfly(self, url: str) -> bool:
         """Determine if should use Scrapfly for this URL."""
+        domain = urlparse(url).netloc
+        logger.info(f"🔍 [SCRAPFLY CHECK] Domain: {domain}")
+        logger.info(f"🔍 [SCRAPFLY CHECK] Enabled: {self.scrapfly_enabled}")
+        logger.info(f"🔍 [SCRAPFLY CHECK] Client available: {self.scrapfly_client is not None}")
+        
         if not self.scrapfly_enabled or not self.scrapfly_client:
+            logger.warning(f"❌ [SCRAPFLY] Not available - enabled={self.scrapfly_enabled}, client={self.scrapfly_client is not None}")
             return False
-        return self._needs_cloudflare_bypass(url)
+        
+        needs_bypass = self._needs_cloudflare_bypass(url)
+        logger.info(f"🔍 [SCRAPFLY CHECK] Needs Cloudflare bypass: {needs_bypass}")
+        return needs_bypass
     
     def _needs_residential_proxy(self, url: str) -> bool:
         """Check if URL requires residential proxy (fallback if Scrapfly not available)."""
@@ -329,18 +343,37 @@ class WebScraper:
                 await page.mouse.move(random.randint(100, 500), random.randint(100, 500))
                 await asyncio.sleep(random.uniform(0.5, 1.5))
                 
-                # Navigate with longer timeout and less strict wait
-                await page.goto(url, wait_until='domcontentloaded', timeout=60000)
+                # Navigate with longer timeout and wait for network idle
+                try:
+                    await page.goto(url, wait_until='networkidle', timeout=60000)
+                    logger.info("✅ Page loaded with networkidle")
+                except PlaywrightTimeout:
+                    # Fallback to domcontentloaded if networkidle takes too long
+                    logger.warning("⚠️ networkidle timeout, falling back to domcontentloaded")
+                    await page.goto(url, wait_until='domcontentloaded', timeout=60000)
                 
                 # Random scroll to simulate human behavior
                 await page.evaluate(f'window.scrollTo(0, {random.randint(100, 300)})')
                 await asyncio.sleep(random.uniform(1, 2))
                 
-                # Wait for network to be idle
+                # Wait for network to be idle (if not already)
                 try:
                     await page.wait_for_load_state('networkidle', timeout=15000)
                 except:
                     logger.warning("Network idle timeout - continuing anyway")
+                
+                # Wait for site-specific selectors to ensure content is loaded
+                domain = urlparse(url).netloc
+                if 'brevitas.com' in domain:
+                    logger.info("🔍 Brevitas detected - waiting for key elements...")
+                    try:
+                        # Wait for title and price elements to be visible
+                        await page.wait_for_selector('.show__title', timeout=10000, state='visible')
+                        logger.info("✅ Brevitas title element loaded")
+                        await page.wait_for_selector('.show__price', timeout=10000, state='visible')
+                        logger.info("✅ Brevitas price element loaded")
+                    except PlaywrightTimeout:
+                        logger.warning("⚠️ Some Brevitas elements didn't load in time, continuing anyway...")
                 
                 # Wait a bit for any lazy-loaded content with random delay
                 await page.wait_for_timeout(random.randint(2000, 4000))
@@ -592,7 +625,8 @@ class WebScraper:
     
     async def _scrape_with_scrapfly(self, url: str) -> Dict[str, any]:
         """Scrape using Scrapfly API for Cloudflare-protected sites."""
-        logger.info(f"🚀 Scraping with Scrapfly: {url}")
+        logger.info(f"🚀 [SCRAPFLY] Starting scrape: {url}")
+        logger.info(f"🚀 [SCRAPFLY] Config: ASP=True, Country=CR, RenderJS=True, Wait=3000ms")
         
         try:
             # Configure Scrapfly scrape
@@ -609,12 +643,16 @@ class WebScraper:
                 # Retry on failure (Note: timeout cannot be set when retry=True)
                 retry=True,
             )
+            logger.info(f"🚀 [SCRAPFLY] Executing API call...")
             
             # Execute scrape
             api_response: ScrapeApiResponse = self.scrapfly_client.scrape(scrape_config)
+            logger.info(f"✅ [SCRAPFLY] API call successful")
+            logger.info(f"🔍 [SCRAPFLY] Response status: {api_response.scrape_result.get('status_code', 'N/A')}")
             
             # Extract HTML content
             html_content = api_response.scrape_result['content']
+            logger.info(f"🔍 [SCRAPFLY] HTML length: {len(html_content)} chars")
             
             # Parse with BeautifulSoup for text extraction
             soup = BeautifulSoup(html_content, 'html.parser')
@@ -683,21 +721,23 @@ class WebScraper:
         # Choose scraping method based on site requirements
         # Priority: Scrapfly > Playwright > httpx
         
+        logger.info(f"🔍 [SCRAPE DECISION] Starting method selection for: {url}")
+        
         if self._should_use_scrapfly(url):
             # Use Scrapfly for Cloudflare-protected sites
-            logger.info(f"🚀 Using Scrapfly for Cloudflare bypass: {url}")
+            logger.info(f"✅ [DECISION] Using Scrapfly for Cloudflare bypass: {url}")
             result = await self._scrape_with_scrapfly(url)
         elif await self._should_use_playwright(url):
             # Use Playwright for JS-heavy sites
-            logger.info(f"🎭 Using Playwright for JS rendering: {url}")
+            logger.info(f"✅ [DECISION] Using Playwright for JS rendering: {url}")
             result = await self._scrape_with_playwright(url)
         else:
             # Try httpx first, fallback to Playwright if fails
+            logger.info(f"✅ [DECISION] Trying httpx first (simple scraping): {url}")
             try:
-                logger.info(f"📡 Using httpx for simple scraping: {url}")
                 result = await self._scrape_with_httpx(url)
             except ScraperError:
-                logger.info(f"⚠️ httpx failed, falling back to Playwright: {url}")
+                logger.info(f"⚠️ [FALLBACK] httpx failed, falling back to Playwright: {url}")
                 result = await self._scrape_with_playwright(url)
         
         return result
