@@ -640,7 +640,7 @@ function App() {
                 <div className="mb-6 flex items-center gap-2 text-sm">
                   <span className="text-gray-600">Source:</span>
                   <span className="px-3 py-1 bg-gray-100 rounded-full font-medium">
-                    {WEBSITES[extractedProperty.source_website || 'other']?.name || 'Other'}
+                    {supportedWebsites.find(w => w.id === extractedProperty.source_website)?.name || 'Other'}
                   </span>
                 </div>
 
