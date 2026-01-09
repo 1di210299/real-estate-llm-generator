@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('properties', '0005_alter_propertyimage_image_url'),
+        ('properties', '0006_remove_duplicate_properties'),
     ]
 
     operations = [
