@@ -45,17 +45,63 @@ console.log('  - Mode:', import.meta.env.MODE);
 console.log('  - All env vars:', import.meta.env);
 
 const EXAMPLE_QUERIES = [
-  { text: 'Properties in Tamarindo?', icon: '🏖️', label: 'Beaches' },
-  { text: 'Houses with 3 bedrooms under $300K', icon: '🏠', label: '3 bedrooms' },
-  { text: 'Luxury properties with pool?', icon: '✨', label: 'Luxury' },
+  { text: 'Properties in Tamarindo?', icon: 'beach', label: 'Beaches' },
+  { text: 'Houses with 3 bedrooms under $300K', icon: 'home', label: '3 bedrooms' },
+  { text: 'Luxury properties with pool?', icon: 'luxury', label: 'Luxury' },
 ];
+
+// SVG Icons
+const Icons = {
+  beach: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/>
+      <path d="M12 2v20M2 12h20"/>
+      <path d="M12 2C9.5 2 7.5 6.5 7.5 12s2 10 4.5 10M12 2c2.5 0 4.5 4.5 4.5 10s-2 10-4.5 10"/>
+    </svg>
+  ),
+  home: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  ),
+  luxury: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  ),
+  user: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  bot: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  ),
+  send: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="22" y1="2" x2="11" y2="13"/>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>
+  ),
+  book: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+  ),
+};
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Hello! 👋 I'm your Kelly Properties assistant. I can help you find the perfect property in Costa Rica. What are you looking for?
+      content: `Hello! I'm your Kelly Properties assistant. I can help you find the perfect property in Costa Rica. What are you looking for?
 
 You can ask about:
 • Properties by location (Tamarindo, Manuel Antonio, etc.)
@@ -170,23 +216,26 @@ You can ask about:
         {/* Header */}
         <div className="chatbot-header">
           <div className="header-content">
-            <h1>🏡 Kelly Properties Assistant</h1>
+            <h1>Kelly Properties Assistant</h1>
             <p>Your intelligent assistant for properties in Costa Rica</p>
           </div>
           
           {/* Example queries */}
           <div className="example-queries">
-            {EXAMPLE_QUERIES.map((query, idx) => (
-              <button
-                key={idx}
-                className="example-query-btn"
-                onClick={() => handleExampleQuery(query.text)}
-                disabled={isLoading}
-              >
-                <span className="query-icon">{query.icon}</span>
-                <span className="query-label">{query.label}</span>
-              </button>
-            ))}
+            {EXAMPLE_QUERIES.map((query, idx) => {
+              const IconComponent = Icons[query.icon as keyof typeof Icons];
+              return (
+                <button
+                  key={idx}
+                  className="example-query-btn"
+                  onClick={() => handleExampleQuery(query.text)}
+                  disabled={isLoading}
+                >
+                  <span className="query-icon">{IconComponent && <IconComponent />}</span>
+                  <span className="query-label">{query.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -195,7 +244,7 @@ You can ask about:
           {messages.map((message) => (
             <div key={message.id} className={`message ${message.role}`}>
               <div className="message-avatar">
-                {message.role === 'user' ? 'U' : 'K'}
+                {message.role === 'user' ? <Icons.user /> : <Icons.bot />}
               </div>
               <div className="message-content">
                 <div className="message-text">
@@ -210,7 +259,9 @@ You can ask about:
                 {/* Sources */}
                 {message.sources && message.sources.length > 0 && (
                   <div className="message-sources">
-                    <div className="sources-title">📚 Sources consulted:</div>
+                    <div className="sources-title">
+                      <Icons.book /> Sources consulted:
+                    </div>
                     {message.sources.map((source, idx) => {
                       const relevance = (source.relevance_score * 100).toFixed(0);
                       const metadata = source.metadata || {};
@@ -240,7 +291,7 @@ You can ask about:
           {/* Loading indicator */}
           {isLoading && (
             <div className="message assistant">
-              <div className="message-avatar">K</div>
+              <div className="message-avatar"><Icons.bot /></div>
               <div className="message-content">
                 <div className="loading-dots">
                   <span></span>
@@ -270,7 +321,7 @@ You can ask about:
             onClick={() => handleSendMessage()}
             disabled={isLoading || !inputValue.trim()}
           >
-            {isLoading ? '...' : 'Send'}
+            {isLoading ? '...' : <Icons.send />}
           </button>
         </div>
       </div>
