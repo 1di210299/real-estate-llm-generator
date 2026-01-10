@@ -94,6 +94,17 @@ const Icons = {
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
     </svg>
   ),
+  plus: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  ),
+  message: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  ),
 };
 
 export default function Chatbot() {
@@ -113,6 +124,7 @@ You can ask about:
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Array<{id: string; title: string; timestamp: Date}>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -210,8 +222,63 @@ You can ask about:
     setTimeout(() => handleSendMessage(query), 100);
   };
 
+  const handleNewConversation = () => {
+    // Save current conversation if it has messages
+    if (conversationId && messages.length > 1) {
+      setConversations(prev => [{
+        id: conversationId,
+        title: messages[1]?.content.substring(0, 50) || 'New Conversation',
+        timestamp: new Date()
+      }, ...prev]);
+    }
+    // Reset to new conversation
+    setMessages([{
+      id: 'welcome',
+      role: 'assistant',
+      content: `Hello! I'm your Kelly Properties assistant. I can help you find the perfect property in Costa Rica. What are you looking for?
+
+You can ask about:
+• Properties by location (Tamarindo, Manuel Antonio, etc.)
+• Specific filters (price, bedrooms, amenities)
+• Information about a particular property`,
+      timestamp: new Date(),
+    }]);
+    setConversationId(null);
+  };
+
   return (
     <div className="chatbot-container">
+      {/* Left Sidebar */}
+      <div className="chatbot-sidebar">
+        <div className="sidebar-header">
+          <h2>Conversations</h2>
+          <button className="new-conversation-btn" onClick={handleNewConversation} title="New conversation">
+            <Icons.plus />
+          </button>
+        </div>
+        <div className="conversations-list">
+          {conversations.length === 0 ? (
+            <div className="empty-conversations">
+              <Icons.message />
+              <p>No conversations yet</p>
+            </div>
+          ) : (
+            conversations.map((conv) => (
+              <div key={conv.id} className="conversation-item">
+                <Icons.message />
+                <div className="conversation-info">
+                  <div className="conversation-title">{conv.title}</div>
+                  <div className="conversation-date">
+                    {conv.timestamp.toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
       <div className="chatbot-wrapper">
         {/* Header */}
         <div className="chatbot-header">
