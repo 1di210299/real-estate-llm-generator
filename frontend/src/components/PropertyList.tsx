@@ -29,12 +29,12 @@ const API_URL = import.meta.env.VITE_API_URL
     try {
       const response = await fetch(API_URL);
       if (!response.ok) {
-        throw new Error('Error al cargar propiedades');
+        throw new Error('Error loading properties');
       }
       const data = await response.json();
       setProperties(data.results || data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -43,7 +43,7 @@ const API_URL = import.meta.env.VITE_API_URL
   if (loading) {
     return (
       <div className="property-list-container">
-        <div className="loading-spinner">Cargando propiedades...</div>
+        <div className="loading-spinner">Loading properties...</div>
       </div>
     );
   }
@@ -62,18 +62,18 @@ const API_URL = import.meta.env.VITE_API_URL
   return (
     <div className="property-list-container">
       <div className="property-list-header">
-        <h1>📊 Propiedades Indexadas</h1>
+        <h1>📊 Indexed Properties</h1>
         <p className="subtitle">
-          Propiedades disponibles para consultar en el chatbot
+          Properties available for chatbot queries
         </p>
         <div className="stats">
           <div className="stat-card">
             <div className="stat-number">{totalProperties}</div>
-            <div className="stat-label">Total Propiedades</div>
+            <div className="stat-label">Total Properties</div>
           </div>
           <div className="stat-card highlight">
             <div className="stat-number">{embeddedProperties.length}</div>
-            <div className="stat-label">Con Embeddings</div>
+            <div className="stat-label">With Embeddings</div>
           </div>
         </div>
       </div>
@@ -84,9 +84,9 @@ const API_URL = import.meta.env.VITE_API_URL
             <div className="property-header">
               <h3 className="property-name">{property.property_name}</h3>
               {property.has_embedding ? (
-                <span className="badge badge-success">✓ Indexada</span>
+                <span className="badge badge-success">✓ Indexed</span>
               ) : (
-                <span className="badge badge-warning">⚠ Sin embedding</span>
+                <span className="badge badge-warning">⚠ Not indexed</span>
               )}
             </div>
 
@@ -136,9 +136,9 @@ const API_URL = import.meta.env.VITE_API_URL
 
             {property.has_embedding && (
               <div className="suggested-queries">
-                <div className="queries-title">💬 Preguntas sugeridas:</div>
-                <div className="query-chip">¿Cuánto cuesta {property.property_name}?</div>
-                <div className="query-chip">Dime más sobre {property.location ? `la propiedad en ${property.location}` : 'esta propiedad'}</div>
+                <div className="queries-title">💬 Suggested queries:</div>
+                <div className="query-chip">How much does {property.property_name} cost?</div>
+                <div className="query-chip">Tell me more about {property.location ? `the property in ${property.location}` : 'this property'}</div>
               </div>
             )}
           </div>
@@ -147,12 +147,12 @@ const API_URL = import.meta.env.VITE_API_URL
 
       {embeddedProperties.length > 0 && (
         <div className="tips-section">
-          <h3>💡 Consejos para el Chatbot</h3>
+          <h3>💡 Chatbot Tips</h3>
           <ul>
-            <li>Pregunta por ubicaciones específicas: "¿Propiedades en {properties[0]?.location}?"</li>
-            <li>Usa filtros: "Casas con {properties[0]?.bedrooms || 3} cuartos bajo ${Math.round((properties[0]?.price_usd || 300000) / 1000)}K"</li>
-            <li>Compara propiedades: "¿Cuál es la diferencia entre {properties[0]?.property_name} y {properties[1]?.property_name}?"</li>
-            <li>Pregunta por amenidades: "¿Propiedades con piscina?"</li>
+            <li>Ask for specific locations: "Properties in {properties[0]?.location}?"</li>
+            <li>Use filters: "Houses with {properties[0]?.bedrooms || 3} bedrooms under ${Math.round((properties[0]?.price_usd || 300000) / 1000)}K"</li>
+            <li>Compare properties: "What's the difference between {properties[0]?.property_name} and {properties[1]?.property_name}?"</li>
+            <li>Ask about amenities: "Properties with pool?"</li>
           </ul>
         </div>
       )}

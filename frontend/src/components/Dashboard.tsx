@@ -20,8 +20,8 @@ export default function Dashboard() {
           
           <div className="dashboard-card" onClick={() => navigate('/properties')}>
             <div className="card-icon">🏘️</div>
-            <h2>Propiedades</h2>
-            <p>Ver propiedades indexadas</p>
+            <h2>Properties</h2>
+            <p>View indexed properties</p>
             <button className="card-button">Acceder →</button>
           </div>
           
@@ -34,7 +34,7 @@ export default function Dashboard() {
         </div>
         
         <div className="dashboard-footer">
-          <p>Backend API: <span className="status-indicator">✓</span> Conectado</p>
+          <p>Backend API: <span className="status-indicator">✓</span> Connected</p>
         </div>
       </div>
     </div>
