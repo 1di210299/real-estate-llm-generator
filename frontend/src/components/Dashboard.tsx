@@ -8,28 +8,28 @@ export default function Dashboard() {
     <div className="dashboard-container">
       <div className="dashboard-content">
         <h1 className="dashboard-title">🏠 KP Real Estate Platform</h1>
-        <p className="dashboard-subtitle">Sistema integral de gestión inmobiliaria con IA</p>
+        <p className="dashboard-subtitle">Comprehensive AI-powered real estate management system</p>
         
         <div className="dashboard-cards">
           <div className="dashboard-card" onClick={() => navigate('/data-collector')}>
             <div className="card-icon">📊</div>
             <h2>Data Collector</h2>
-            <p>Recolección y gestión de propiedades</p>
-            <button className="card-button">Acceder →</button>
+            <p>Property collection and management</p>
+            <button className="card-button">Access →</button>
           </div>
           
           <div className="dashboard-card" onClick={() => navigate('/properties')}>
             <div className="card-icon">🏘️</div>
             <h2>Properties</h2>
             <p>View indexed properties</p>
-            <button className="card-button">Acceder →</button>
+            <button className="card-button">Access →</button>
           </div>
           
           <div className="dashboard-card" onClick={() => navigate('/chatbot')}>
             <div className="card-icon">💬</div>
-            <h2>Chatbot IA</h2>
-            <p>Asistente virtual inmobiliario</p>
-            <button className="card-button">Acceder →</button>
+            <h2>AI Chatbot</h2>
+            <p>Virtual real estate assistant</p>
+            <button className="card-button">Access →</button>
           </div>
         </div>
         

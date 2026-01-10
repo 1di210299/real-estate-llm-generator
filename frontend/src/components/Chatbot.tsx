@@ -45,9 +45,9 @@ console.log('  - Mode:', import.meta.env.MODE);
 console.log('  - All env vars:', import.meta.env);
 
 const EXAMPLE_QUERIES = [
-  { text: '¿Propiedades en Tamarindo?', icon: '🏖️', label: 'Playas' },
-  { text: 'Casas con 3 cuartos bajo $300K', icon: '🏠', label: '3 habitaciones' },
-  { text: '¿Propiedades de lujo con piscina?', icon: '✨', label: 'Lujo' },
+  { text: 'Properties in Tamarindo?', icon: '🏖️', label: 'Beaches' },
+  { text: 'Houses with 3 bedrooms under $300K', icon: '🏠', label: '3 bedrooms' },
+  { text: 'Luxury properties with pool?', icon: '✨', label: 'Luxury' },
 ];
 
 export default function Chatbot() {
@@ -55,12 +55,12 @@ export default function Chatbot() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: `¡Hola! 👋 Soy tu asistente de Kelly Properties. Puedo ayudarte a encontrar la propiedad perfecta en Costa Rica. ¿Qué estás buscando?
+      content: `Hello! 👋 I'm your Kelly Properties assistant. I can help you find the perfect property in Costa Rica. What are you looking for?
 
-Puedes preguntar sobre:
-• Propiedades por ubicación (Tamarindo, Manuel Antonio, etc.)
-• Filtros específicos (precio, habitaciones, amenidades)
-• Información sobre una propiedad en particular`,
+You can ask about:
+• Properties by location (Tamarindo, Manuel Antonio, etc.)
+• Specific filters (price, bedrooms, amenities)
+• Information about a particular property`,
       timestamp: new Date(),
     },
   ]);
@@ -141,7 +141,7 @@ Puedes preguntar sobre:
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: `Lo siento, hubo un error al procesar tu solicitud.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `Sorry, there was an error processing your request.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`,
         timestamp: new Date(),
       };
 
@@ -171,7 +171,7 @@ Puedes preguntar sobre:
         <div className="chatbot-header">
           <div className="header-content">
             <h1>🏡 Kelly Properties Assistant</h1>
-            <p>Tu asistente inteligente para propiedades en Costa Rica</p>
+            <p>Your intelligent assistant for properties in Costa Rica</p>
           </div>
           
           {/* Example queries */}
@@ -210,7 +210,7 @@ Puedes preguntar sobre:
                 {/* Sources */}
                 {message.sources && message.sources.length > 0 && (
                   <div className="message-sources">
-                    <div className="sources-title">📚 Fuentes consultadas:</div>
+                    <div className="sources-title">📚 Sources consulted:</div>
                     {message.sources.map((source, idx) => {
                       const relevance = (source.relevance_score * 100).toFixed(0);
                       const metadata = source.metadata || {};
@@ -226,7 +226,7 @@ Puedes preguntar sobre:
                             </span>
                           )}
                           <span className="source-relevance">
-                            {' '}(relevancia: {relevance}%)
+                            {' '}(relevance: {relevance}%)
                           </span>
                         </div>
                       );
@@ -259,7 +259,7 @@ Puedes preguntar sobre:
           <input
             type="text"
             className="chatbot-input"
-            placeholder="Escribe tu pregunta aquí..."
+            placeholder="Type your question here..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -270,7 +270,7 @@ Puedes preguntar sobre:
             onClick={() => handleSendMessage()}
             disabled={isLoading || !inputValue.trim()}
           >
-            {isLoading ? '...' : 'Enviar'}
+            {isLoading ? '...' : 'Send'}
           </button>
         </div>
       </div>
