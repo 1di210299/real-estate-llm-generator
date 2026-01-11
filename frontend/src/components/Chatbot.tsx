@@ -283,7 +283,6 @@ You can ask about:
         {/* Header */}
         <div className="chatbot-header">
           <div className="header-content">
-            <h1>Kelly Properties Assistant</h1>
             <p>Your intelligent assistant for properties in Costa Rica</p>
           </div>
           
