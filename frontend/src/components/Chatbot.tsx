@@ -274,7 +274,7 @@ You can ask about:
       parts.push(text.substring(currentIndex));
     }
     
-    return parts.length > 0 ? parts : text;
+    return parts.length > 0 ? parts : [text];
   };
 
   const handleSendMessage = async (messageText?: string) => {
