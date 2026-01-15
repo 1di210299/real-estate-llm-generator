@@ -38,7 +38,20 @@ class Encuentra24Extractor(BaseExtractor):
         # STEP 3: Use AI to extract all fields from semantic HTML
         ai_enhanced_data = self.enhance_with_ai_html(relevant_html, construction_stage, url)
         
-        # STEP 4: Add custom fields
+        # STEP 4: Merge robust manual extraction (User feedback fix)
+        manual_desc = self.extract_description(soup)
+        if manual_desc:
+            # Prefer manual description if longer/present
+            if not ai_enhanced_data.get('description') or len(manual_desc) > len(ai_enhanced_data.get('description', '')):
+                ai_enhanced_data['description'] = manual_desc
+
+        manual_benefits = self.extract_benefits(soup)
+        if manual_benefits:
+            current_amenities = ai_enhanced_data.get('amenities', []) or []
+            # Merge unique benefits
+            ai_enhanced_data['amenities'] = list(set(current_amenities + manual_benefits))
+        
+        # STEP 5: Add custom fields
         ai_enhanced_data['listing_id'] = self.extract_listing_id(soup)
         ai_enhanced_data['date_listed'] = self.extract_date_listed(soup)
         ai_enhanced_data['construction_stage'] = construction_stage
@@ -459,22 +472,79 @@ CRITICAL:
         return "\n\n".join(sections)
     
     def extract_construction_stage(self, soup: BeautifulSoup) -> Optional[str]:
-        """Extract construction stage from timeline."""
+        """Extract construction stage from timeline or details."""
+        # 1. Timeline extraction
         timeline = soup.find('div', class_='d3-new-property-stage__time-line')
-        if not timeline:
-            return None
+        if timeline:
+            active_items = timeline.find_all('div', class_='d3-new-property-stage__time-line-item--active')
+            if active_items:
+                last_active = active_items[-1]
+                label = last_active.find('p', class_='d3-new-property-stage__time-line-label')
+                if label:
+                    return label.get_text(strip=True)
         
-        # Find all active stages
-        active_items = timeline.find_all('div', class_='d3-new-property-stage__time-line-item--active')
-        
-        if active_items:
-            # Get the last active stage
-            last_active = active_items[-1]
-            label = last_active.find('p', class_='d3-new-property-stage__time-line-label')
-            if label:
-                return label.get_text(strip=True)
+        # 2. Text details extraction (User report: "Etapa de inversión")
+        # Look in the details section
+        details_content = soup.find('div', class_='d3-property-details__content')
+        if details_content:
+            labels = details_content.find_all('div', class_='d3-property-details__detail-label')
+            for label in labels:
+                if 'Etapa' in label.get_text():
+                    detail = label.find('p', class_='d3-property-details__detail')
+                    if detail:
+                        return detail.get_text(strip=True)
         
         return None
+
+    def extract_benefits(self, soup: BeautifulSoup) -> list:
+        """Extract benefits/highlights section."""
+        benefits = []
+        
+        # Look for "Beneficios" header
+        headers = soup.find_all(['h2', 'h3', 'div'], string=re.compile(r'Beneficios', re.I))
+        for header in headers:
+            # The list usually follows the header
+            # It might be in a ul next to it or in a container
+            parent = header.parent
+            if parent:
+                # Try to find list items in parent or siblings
+                items = parent.find_all('li')
+                if not items:
+                    # Look in next sibling
+                    sibling = header.find_next_sibling()
+                    if sibling:
+                        items = sibling.find_all('li')
+                
+                for item in items:
+                    benefits.append(item.get_text(strip=True))
+        
+        return benefits
+
+    def extract_description(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract property description (Acerca de)."""
+        # User reported "Acerca de" section
+        
+        # 1. Try d3-property-about__text (standard new design)
+        desc = soup.find(class_='d3-property-about__text')
+        if desc:
+            for br in desc.find_all('br'):
+                br.replace_with('\n')
+            text = desc.get_text(strip=True)
+            if text and len(text) > 20:
+                return text
+
+        # 2. Look for "Acerca de" header and get following text
+        headers = soup.find_all(['h2', 'h3', 'div'], string=re.compile(r'Acerca de', re.I))
+        for header in headers:
+            # The text usually follows
+            content = header.find_next_sibling('div') or header.find_next_sibling('p')
+            if content:
+                text = content.get_text(separator='\n', strip=True)
+                if len(text) > 20:
+                    return text
+        
+        # 3. Fallback to older extractors
+        return super().extract_description(soup)
     
     def enhance_with_ai(self, full_text: str, construction_stage: str, structured_data: dict) -> dict:
         """Use OpenAI to process clean text and extract ONLY unstructured fields.
@@ -528,6 +598,11 @@ CRITICAL:
             if 'pool' not in structured_data:
                 fields_to_extract.append("pool")
             
+            # New financial/details fields
+            fields_to_extract.append("hoa_fee")
+            fields_to_extract.append("taxes")
+            fields_to_extract.append("year_built")
+            
             print(f"🤖 AI extraerá {len(fields_to_extract)} campos: {', '.join(fields_to_extract)}")
             
             # Build optimized prompt
@@ -551,6 +626,11 @@ Guidelines:
 - description: brief summary in English (2-3 sentences max)
 - area_m2: construction area in square meters
 - lot_size_m2: lot/land size in square meters
+- hoa_fee: monthly maintenance fee (number)
+- taxes: yearly property taxes (number)
+- year_built: year of construction (number)
+- video_url: link to YouTube/Vimeo video
+- brochure_url: link to PDF brochure
 
 Return valid JSON only."""
             

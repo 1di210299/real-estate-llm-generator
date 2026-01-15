@@ -66,6 +66,17 @@ class BrevitasExtractor(BaseExtractor):
             for detail in details:
                 details_text.append(detail.get_text(strip=True))
             sections.append("DETAILS:\n" + "\n".join(details_text))
+            
+        # 4b. Features / Amenities (Often in list format)
+        features_container = soup.find(class_='show__features') or soup.find(id='features')
+        if features_container:
+            sections.append(f"FEATURES: {features_container.get_text(separator=' | ', strip=True)}")
+        else:
+             # Generic fallback
+            lists = soup.find_all('ul')
+            for ul in lists:
+                if len(ul.find_all('li')) > 4: 
+                     sections.append(f"POSSIBLE FEATURES: {ul.get_text(separator=' | ', strip=True)}")
         
         # 5. Description (most important)
         description = soup.find('p', class_='show__copy')
@@ -120,7 +131,13 @@ class BrevitasExtractor(BaseExtractor):
   "parking_spaces": <number or null>,
   "pool": <boolean>,
   "description": "Professional property description (3-4 sentences, max 600 chars)",
-  "units": <number of units if multi-unit property>
+  "units": <number of units if multi-unit/hotel property, else null>,
+  "zoning": "Residential|Commercial|Mixed|etc (if specified)",
+  "hoa_fee": <numeric monthly fee in USD or null>,
+  "taxes": <numeric yearly taxes in USD or null>,
+  "year_built": <number or null>,
+  "video_url": "url or null",
+  "brochure_url": "url or null"
 }
 
 CRITICAL INSTRUCTIONS:

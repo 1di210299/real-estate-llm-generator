@@ -197,9 +197,15 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin ```json):
   "bathrooms": número decimal o null,
   "area_m2": número decimal (área construida) o null,
   "lot_size_m2": número decimal (área del lote/terreno) o null,
-  "parking_spaces": número o null,
+  "parking_spaces": "número o null",
   "description": "descripción profesional de 3-4 oraciones en español",
-  "amenities": ["lista", "de", "amenidades"]
+  "amenities": ["lista", "de", "amenidades"],
+  "zoning": "Residencial|Comercial|Mixto|etc (si se especifica)",
+  "hoa_fee": "número mensual en USD o null",
+  "taxes": "número anual en USD o null",
+  "year_built": "número (año) o null",
+  "video_url": "url de video o null",
+  "brochure_url": "url del brochure/pdf o null"
 }}"""
             
             response = client.chat.completions.create(
