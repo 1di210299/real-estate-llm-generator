@@ -57,12 +57,18 @@ interface WebsiteConfig {
   has_extractor: boolean
 }
 
+interface ContentType {
+  key: string
+  label: string
+  icon: string
+  description: string
+}
+
 function App() {
   const { t } = useLanguage();
   const [inputType, setInputType] = useState<'url' | 'text'>('url')
   const [url, setUrl] = useState('')
   const [text, setText] = useState('')
-  const [sourceWebsite, setSourceWebsite] = useState('brevitas')
   const [loading, setLoading] = useState(false)
   const [extractedProperty, setExtractedProperty] = useState<PropertyData | null>(null)
   const [error, setError] = useState('')
@@ -72,12 +78,13 @@ function App() {
   const [confidence, setConfidence] = useState(0)
   const [supportedWebsites, setSupportedWebsites] = useState<WebsiteConfig[]>([])
   const [websitesLoading, setWebsitesLoading] = useState(true)
+  const [contentTypes, setContentTypes] = useState<ContentType[]>([])
+  const [selectedContentType, setSelectedContentType] = useState('real_estate')
   const [propertiesProcessedToday, setPropertiesProcessedToday] = useState<number>(0)
   const [recentProperties, setRecentProperties] = useState<RecentProperty[]>([])
   const [tutorialStep, setTutorialStep] = useState<number | null>(null)
   const [showTutorialButton, setShowTutorialButton] = useState(true)
   const [highlightPositions, setHighlightPositions] = useState<{
-    websiteSection?: DOMRect;
     urlInput?: DOMRect;
     processButton?: DOMRect;
   }>({})
@@ -87,7 +94,14 @@ function App() {
     onComplete: (data) => {
       console.log('✅ Process complete:', data);
       if (data && data.property) {
-        setExtractedProperty(data.property);
+        // Include content_type info in the property
+        const propertyWithContentType = {
+          ...data.property,
+          content_type: data.content_type,
+          content_type_confidence: data.content_type_confidence,
+          content_type_detection_method: data.content_type_detection_method
+        };
+        setExtractedProperty(propertyWithContentType);
         setConfidence(data.extraction_confidence || 0.9);
         setShowResults(true);
         // Reload stats after successful processing
@@ -184,8 +198,24 @@ function App() {
     loadSupportedWebsites()
     loadHistoryFromBackend()
     loadIngestionStats()
+    loadContentTypes()
   }, [])
   
+  const loadContentTypes = async () => {
+    try {
+      const url = `${API_BASE}/ingest/content-types/`
+      console.log('📥 [FETCH] Loading content types from:', url)
+      const response = await fetch(url)
+      const data = await response.json()
+      if (data.status === 'success') {
+        setContentTypes(data.content_types)
+        console.log('✅ Content types loaded:', data.content_types.length)
+      }
+    } catch (error) {
+      console.error('Error loading content types:', error)
+    }
+  }
+
   const loadIngestionStats = async () => {
     try {
       const url = `${API_BASE}/ingest/stats/`
@@ -211,7 +241,7 @@ function App() {
   }
 
   const nextTutorialStep = () => {
-    if (tutorialStep !== null && tutorialStep < 4) {
+    if (tutorialStep !== null && tutorialStep < 3) {
       setTutorialStep(tutorialStep + 1)
       setTimeout(calculateHighlightPositions, 100)
     } else {
@@ -226,15 +256,11 @@ function App() {
   }
 
   const calculateHighlightPositions = () => {
-    const websiteSection = document.getElementById('websiteSourceSelector')
     const urlInput = document.getElementById('propertyUrlInput')
     const processButton = document.getElementById('processPropertyButton')
     
     const positions: any = {}
     
-    if (websiteSection) {
-      positions.websiteSection = websiteSection.getBoundingClientRect()
-    }
     if (urlInput) {
       positions.urlInput = urlInput.getBoundingClientRect()
     }
@@ -292,23 +318,7 @@ function App() {
     return 'other'
   }
 
-  const getWebsiteFromUrl = (url: string): string => {
-    if (!url) return 'other'
-    const urlLower = url.toLowerCase()
-    
-    if (urlLower.includes('brevitas')) return 'brevitas'
-    if (urlLower.includes('encuentra24')) return 'encuentra24'
-    if (urlLower.includes('coldwellbanker')) return 'coldwellbanker'
-    
-    return 'other'
-  }
 
-  const autoDetectWebsite = () => {
-    if (url) {
-      const detected = getWebsiteFromUrl(url)
-      setSourceWebsite(detected)
-    }
-  }
 
   const toggleWebsiteGroup = (category: string) => {
     setCollapsedGroups(prev => {
@@ -393,8 +403,8 @@ function App() {
       const endpoint = inputType === 'url' ? `${API_BASE}/ingest/url/` : `${API_BASE}/ingest/text/`
       console.log('📤 [FETCH] Starting processing job:', endpoint)
       const body = inputType === 'url' 
-        ? { url, source_website: sourceWebsite, use_websocket: true } 
-        : { text, source_website: sourceWebsite, use_websocket: true }
+        ? { url, content_type: selectedContentType, use_websocket: true }
+        : { text, content_type: selectedContentType, use_websocket: true }
       console.log('📤 [FETCH] Request body:', body)
 
       const response = await fetch(endpoint, {
@@ -415,7 +425,13 @@ function App() {
         } else if (data.property) {
           // Fallback: respuesta inmediata sin WebSocket
           console.log('⚠️  No task_id, using immediate response');
-          setExtractedProperty(data.property);
+          const propertyWithContentType = {
+            ...data.property,
+            content_type: data.content_type,
+            content_type_confidence: data.content_type_confidence,
+            content_type_detection_method: data.content_type_detection_method
+          };
+          setExtractedProperty(propertyWithContentType);
           setConfidence(data.extraction_confidence || 0.9);
           setShowResults(true);
           setLoading(false);
@@ -758,51 +774,6 @@ function App() {
                 </div>
               </div>
 
-              {/* Website Source Selector */}
-              <div className="mb-4" id="websiteSourceSelector">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t.dataCollector.sourceWebsite} {websitesLoading && <span className="text-xs text-gray-400">({t.dataCollector.loading})</span>}
-                </label>
-                <select 
-                  value={sourceWebsite}
-                  onChange={(e) => setSourceWebsite(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  disabled={websitesLoading}
-                >
-                  {supportedWebsites.filter(w => w.active).map(website => (
-                    <option key={website.id} value={website.id}>
-                      {website.name} {website.has_extractor ? '✓' : '(LLM)'}
-                    </option>
-                  ))}
-                </select>
-                <div className="mt-2 flex flex-wrap gap-2" id="supportedWebsiteLinks">
-                  {supportedWebsites.filter(w => w.url).map(website => (
-                    <a 
-                      key={website.id}
-                      href={website.url!} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full hover:bg-gray-100 transition"
-                      style={{ 
-                        color: website.color,
-                        border: `1px solid ${website.color}33`
-                      }}
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                      </svg>
-                      {website.name}
-                      {website.has_extractor && <span className="text-green-600">✓</span>}
-                    </a>
-                  ))}
-                </div>
-                <p className="mt-2 text-xs text-gray-500">
-                  💡 Click website name to open in new tab. Copy <strong>individual property URLs</strong> (not search/listing pages).
-                  <br />
-                  ✓ = Fast extraction (site-specific), (LLM) = AI-powered extraction
-                </p>
-              </div>
-
               {/* URL Input */}
               {inputType === 'url' && (
                 <div className="mb-4" id="urlInputContainer">
@@ -813,15 +784,35 @@ function App() {
                     id="propertyUrlInput"
                     type="url" 
                     value={url}
-                    onChange={(e) => {
-                      setUrl(e.target.value)
-                      autoDetectWebsite()
-                    }}
+                    onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://encuentra24.com/property/..."
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               )}
+
+              {/* Content Type Selector */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Content Type
+                </label>
+                <select
+                  value={selectedContentType}
+                  onChange={(e) => setSelectedContentType(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  {contentTypes.map((type) => (
+                    <option key={type.key} value={type.key}>
+                      {type.icon} {type.label}
+                    </option>
+                  ))}
+                </select>
+                {contentTypes.find(t => t.key === selectedContentType) && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {contentTypes.find(t => t.key === selectedContentType)?.description}
+                  </p>
+                )}
+              </div>
 
               {/* Text Input */}
               {inputType === 'text' && (
@@ -861,18 +852,13 @@ function App() {
                 stage={progress.stage}
                 substage={progress.substage}
               />
-              <div className="mt-4 text-center">
-                <p className="text-sm text-gray-500">
-                  {t.dataCollector.processing} <span className="font-semibold">
-                    {supportedWebsites.find(w => w.id === sourceWebsite)?.name || 'Unknown'}
-                  </span>
-                </p>
-                {isConnected && (
-                  <p className="text-xs text-green-600 mt-1">
+              {isConnected && (
+                <div className="mt-4 text-center">
+                  <p className="text-xs text-green-600">
                     🟢 {t.dataCollector.connectedRealtime}
                   </p>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -892,11 +878,26 @@ function App() {
                 </div>
                 
                 {/* Source Website Badge */}
-                <div className="mb-6 flex items-center gap-2 text-sm">
-                  <span className="text-gray-600">{t.dataCollector.source}:</span>
-                  <span className="px-3 py-1 bg-gray-100 rounded-full font-medium">
-                    {supportedWebsites.find(w => w.id === extractedProperty.source_website)?.name || 'Other'}
-                  </span>
+                <div className="mb-6 flex items-center gap-4 text-sm flex-wrap">
+                  {extractedProperty.source_website && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">{t.dataCollector.source}:</span>
+                      <span className="px-3 py-1 bg-gray-100 rounded-full font-medium">
+                        {extractedProperty.source_website}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Content Type Badge - NEW */}
+                  {(extractedProperty as any).content_type && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Type:</span>
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                        {contentTypes.find(t => t.key === (extractedProperty as any).content_type)?.icon} {' '}
+                        {contentTypes.find(t => t.key === (extractedProperty as any).content_type)?.label || (extractedProperty as any).content_type}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Property Details Grid */}

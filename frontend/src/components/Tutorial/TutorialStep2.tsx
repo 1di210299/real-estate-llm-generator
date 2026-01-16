@@ -23,7 +23,7 @@ export default function TutorialStep2({ position, onNext, onSkip }: TutorialStep
             <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" transform="rotate(90 12 12)"/>
           </svg>
           <div className="bg-green-500 text-white px-6 py-3 rounded-full font-bold text-lg shadow-2xl whitespace-nowrap mt-2">
-            ¡PEGA AQUÍ EL ENLACE!
+            ¡PRESIONA AQUÍ!
           </div>
         </div>
       </div>
@@ -61,8 +61,8 @@ export default function TutorialStep2({ position, onNext, onSkip }: TutorialStep
                 2
               </div>
               <div>
-                <h3 className="text-xl font-bold">Pega el enlace</h3>
-                <p className="text-xs text-green-100">Ctrl+V o Cmd+V en el campo resaltado</p>
+                <h3 className="text-xl font-bold">Presiona Procesar</h3>
+                <p className="text-xs text-green-100">El sistema detectará automáticamente el contenido</p>
               </div>
             </div>
             <button onClick={onSkip} className="text-white/80 hover:text-white">

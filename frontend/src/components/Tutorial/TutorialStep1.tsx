@@ -37,7 +37,7 @@ export default function TutorialStep1({ position, onNext, onSkip }: TutorialStep
             <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" transform="rotate(90 12 12)"/>
           </svg>
           <div className="bg-blue-500 text-white px-5 py-2 rounded-full font-bold text-base shadow-2xl whitespace-nowrap mt-2">
-            ELIGE UN SITIO WEB
+            INGRESA UNA URL
           </div>
         </div>
       </div>

@@ -6,7 +6,6 @@ import TutorialStep4 from './TutorialStep4'
 interface TutorialOverlayProps {
   tutorialStep: number | null
   highlightPositions: {
-    websiteSection?: DOMRect
     urlInput?: DOMRect
     processButton?: DOMRect
   }
@@ -29,7 +28,7 @@ export default function TutorialOverlay({
 
       {tutorialStep === 1 && (
         <TutorialStep1
-          position={highlightPositions.websiteSection}
+          position={highlightPositions.urlInput}
           onNext={onNext}
           onSkip={onSkip}
         />
@@ -37,22 +36,14 @@ export default function TutorialOverlay({
 
       {tutorialStep === 2 && (
         <TutorialStep2
-          position={highlightPositions.urlInput}
-          onNext={onNext}
-          onSkip={onSkip}
-        />
-      )}
-
-      {tutorialStep === 3 && (
-        <TutorialStep3
           position={highlightPositions.processButton}
           onNext={onNext}
           onSkip={onSkip}
         />
       )}
 
-      {tutorialStep === 4 && (
-        <TutorialStep4 onSkip={onSkip} />
+      {tutorialStep === 3 && (
+        <TutorialStep3 onSkip={onSkip} />
       )}
     </div>
   )

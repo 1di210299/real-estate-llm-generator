@@ -6,6 +6,7 @@ from .views import (
     SavePropertyView, 
     GenerateEmbeddingsView,
     SupportedWebsitesView,
+    ContentTypesView,
     IngestionStatsView,
     ProcessGoogleSheetView,
     CreateGoogleSheetTemplateView,
@@ -16,6 +17,7 @@ from .views import (
 
 urlpatterns = [
     path('supported-websites/', SupportedWebsitesView.as_view(), name='supported-websites'),
+    path('content-types/', ContentTypesView.as_view(), name='content-types'),
     path('stats/', IngestionStatsView.as_view(), name='ingestion-stats'),
     path('url/', IngestURLView.as_view(), name='ingest-url'),
     path('text/', IngestTextView.as_view(), name='ingest-text'),

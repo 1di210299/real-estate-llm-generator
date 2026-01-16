@@ -18,8 +18,10 @@ from apps.users.models import CustomUser
 
 from core.scraping.scraper import scrape_url, ScraperError
 from core.scraping.extractors import get_extractor, EXTRACTORS
-from core.llm.extraction import extract_property_data, ExtractionError
+from core.llm.extraction import extract_property_data, extract_content_data, ExtractionError
 from core.llm.embeddings import generate_property_embedding
+from core.llm.content_types import get_all_content_types, CONTENT_TYPES
+from core.llm.content_detection import detect_content_type
 from core.utils.website_detector import detect_source_website
 from apps.properties.models import Property, PropertyImage
 from apps.properties.serializers import PropertyDetailSerializer
@@ -102,6 +104,28 @@ class SupportedWebsitesView(APIView):
             'websites': serializer.data,
             'total_extractors': len(EXTRACTORS),
             'extractor_sites': list(EXTRACTORS.keys())
+        }, status=status.HTTP_200_OK)
+
+
+class ContentTypesView(APIView):
+    """
+    Endpoint to get list of available content types for multi-domain extraction.
+    
+    GET /ingest/content-types/
+    """
+    
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Return list of available content types."""
+        
+        content_types = get_all_content_types()
+        
+        return Response({
+            'status': 'success',
+            'content_types': content_types,
+            'total': len(content_types)
         }, status=status.HTTP_200_OK)
 
 
@@ -190,7 +214,7 @@ class IngestURLView(APIView):
     authentication_classes = []  # No authentication required
     permission_classes = [AllowAny]
     
-    def _process_url_with_progress(self, url: str, source_website_override: str, task_id: str):
+    def _process_url_with_progress(self, url: str, source_website_override: str, user_content_type: str, task_id: str):
         """Process URL in background thread with progress updates."""
         import time
         tracker = ProgressTracker(task_id)
@@ -215,7 +239,7 @@ class IngestURLView(APIView):
             time.sleep(0.3)  # Allow UI to show stage
             
             # Step 2: Detection (30-40%)
-            tracker.update(35, "Detectando sitio web...", stage="Análisis", substage="Identificando fuente")
+            tracker.update(35, "Detectando sitio web y tipo de contenido...", stage="Análisis", substage="Identificando fuente")
             time.sleep(0.2)
             
             if source_website_override:
@@ -223,15 +247,34 @@ class IngestURLView(APIView):
             else:
                 source_website = detect_source_website(url)
             
-            tracker.update(40, f"Sitio detectado: {source_website}", stage="Análisis")
+            # NEW: Detect content type (real_estate, tour, restaurant, etc.)
+            content_detection = detect_content_type(
+                url=url,
+                html=html_content,
+                user_override=user_content_type,
+                use_llm_fallback=False
+            )
+            detected_content_type = content_detection['content_type']
+            content_type_confidence = content_detection['confidence']
+            detection_method = content_detection['method']
+            
+            logger.info(f"Content type detected: {detected_content_type} (confidence: {content_type_confidence:.2%}, method: {detection_method})")
+            
+            tracker.update(40, f"Sitio: {source_website} | Tipo: {detected_content_type}", stage="Análisis")
             time.sleep(0.2)
             
             # Step 3: Extraction (40-80%)
             tracker.update(45, "Obteniendo extractor...", stage="Extracción", substage="Configurando herramientas")
             time.sleep(0.2)
-            extractor = get_extractor(url)
-            extractor_name = extractor.__class__.__name__
-            use_site_extractor = extractor_name != 'BaseExtractor'
+            
+            # Only use site-specific extractor for real_estate
+            if detected_content_type == 'real_estate':
+                extractor = get_extractor(url)
+                extractor_name = extractor.__class__.__name__
+                use_site_extractor = extractor_name != 'BaseExtractor'
+            else:
+                use_site_extractor = False
+                extractor_name = 'LLM-based'
             
             if use_site_extractor:
                 tracker.update(50, f"Usando extractor específico: {extractor.site_name}", stage="Extracción", substage="Extracción rápida")
@@ -243,7 +286,8 @@ class IngestURLView(APIView):
                 extraction_confidence = 0.95
             else:
                 tracker.update(50, "Usando extracción con IA...", stage="Extracción", substage="Procesando con LLM")
-                extracted_data = extract_property_data(html_content, url=url)
+                # Use content-type specific extraction
+                extracted_data = extract_content_data(html_content, content_type=detected_content_type, url=url)
                 tracker.update(75, "IA completó la extracción", stage="Extracción", substage="Completado")
                 extraction_method = 'llm_based'
                 extraction_confidence = extracted_data.get('extraction_confidence', 0.5)
@@ -275,12 +319,15 @@ class IngestURLView(APIView):
             
             tracker.update(95, "Datos listos", stage="Procesamiento", substage="Preparando respuesta")
             
-            # Send completion with serialized data
+            # Send completion with serialized data INCLUDING content_type info
             tracker.complete(serialize_for_json({
                 'property': extracted_data,
                 'extraction_method': extraction_method,
                 'extraction_confidence': extraction_confidence,
                 'extractor_used': extractor_name,
+                'content_type': detected_content_type,
+                'content_type_confidence': content_type_confidence,
+                'content_type_detection_method': detection_method,
             }), message="Extracción completada exitosamente")
             
             tracker.update(100, "¡Completado!", stage="Completado")
@@ -296,6 +343,7 @@ class IngestURLView(APIView):
         
         url = request.data.get('url')
         source_website_override = request.data.get('source_website')
+        user_content_type = request.data.get('content_type')  # NEW: Accept content_type from frontend
         use_websocket = request.data.get('use_websocket', False)
         
         if not url:
@@ -312,7 +360,7 @@ class IngestURLView(APIView):
             # Start processing in background thread
             thread = threading.Thread(
                 target=self._process_url_with_progress,
-                args=(url, source_website_override, task_id)
+                args=(url, source_website_override, user_content_type, task_id)
             )
             thread.daemon = True
             thread.start()
@@ -340,7 +388,7 @@ class IngestURLView(APIView):
             html_content = scraped_data.get('html', scraped_data.get('text', ''))
             logger.info(f"Original HTML size: {len(html_content)} chars")
             
-            # Step 2: Detect source website and get appropriate extractor
+            # Step 2: Detect source website and content type
             if source_website_override:
                 source_website = source_website_override
                 logger.info(f"Step 2: Using user-selected source website: {source_website}")
@@ -348,18 +396,35 @@ class IngestURLView(APIView):
                 source_website = detect_source_website(url)
                 logger.info(f"Step 2: Auto-detected source website: {source_website}")
             
-            # Step 3: Get site-specific extractor
-            extractor = get_extractor(url)
-            extractor_name = extractor.__class__.__name__
-            logger.info(f"Step 3: Using extractor: {extractor_name} for {extractor.site_name}")
+            # NEW: Detect content type (real_estate, tour, restaurant, etc.)
+            content_detection = detect_content_type(
+                url=url,
+                html=html_content,
+                user_override=user_content_type,
+                use_llm_fallback=False
+            )
+            detected_content_type = content_detection['content_type']
+            content_type_confidence = content_detection['confidence']
+            detection_method = content_detection['method']
             
-            # Check if we have a site-specific extractor (not BaseExtractor)
-            use_site_extractor = extractor_name != 'BaseExtractor'
+            logger.info(f"Content type detected: {detected_content_type} (confidence: {content_type_confidence:.2%}, method: {detection_method})")
+            
+            # Step 3: Get site-specific extractor (only for real_estate)
+            if detected_content_type == 'real_estate':
+                extractor = get_extractor(url)
+                extractor_name = extractor.__class__.__name__
+                logger.info(f"Step 3: Using extractor: {extractor_name} for {extractor.site_name}")
+                use_site_extractor = extractor_name != 'BaseExtractor'
+            else:
+                use_site_extractor = False
+                extractor_name = 'LLM-based'
+                logger.info(f"Step 3: Content type is {detected_content_type}, using LLM extraction")
             
             if use_site_extractor:
-                logger.info(f"✓ Using site-specific extractor - no LLM needed")
+                logger.info(f"✓ Using site-specific extractor for real_estate - no LLM needed")
                 
                 # Extract using site-specific rules (fast, free, precise)
+                extractor = get_extractor(url)
                 extracted_data = extractor.extract(html_content, url)
                 logger.info(f"Extraction complete using {extractor_name}")
                 logger.info(f"Extracted fields: {[k for k, v in extracted_data.items() if v is not None]}")
@@ -368,13 +433,20 @@ class IngestURLView(APIView):
                 extraction_confidence = 0.95  # High confidence for rule-based extraction
                 
             else:
-                logger.info(f"⚠ No site-specific extractor available - falling back to LLM")
+                logger.info(f"⚠ Using LLM extraction for content type: {detected_content_type}")
                 
-                # Fallback to LLM-based extraction (slower, costs tokens, less precise)
-                # The PropertyExtractor._clean_content() method will use BeautifulSoup
-                # to intelligently extract relevant sections before sending to LLM
-                logger.info("Extracting property data with LLM...")
-                extracted_data = extract_property_data(html_content, url=url)
+                # Use LLM-based extraction with appropriate content type prompt
+                if detected_content_type == 'real_estate':
+                    logger.info("Extracting real_estate data with LLM...")
+                    extracted_data = extract_property_data(html_content, url=url)
+                else:
+                    logger.info(f"Extracting {detected_content_type} data with specialized LLM prompt...")
+                    extracted_data = extract_content_data(
+                        content=html_content,
+                        content_type=detected_content_type,
+                        url=url
+                    )
+                
                 logger.info(f"Extraction complete. Confidence: {extracted_data.get('extraction_confidence')}")
                 
                 extraction_method = 'llm_based'
@@ -421,6 +493,10 @@ class IngestURLView(APIView):
                 'extraction_method': extraction_method,
                 'extraction_confidence': extraction_confidence,
                 'extractor_used': extractor_name,
+                # NEW: Content type information
+                'content_type': detected_content_type,
+                'content_type_confidence': content_type_confidence,
+                'content_type_detection_method': detection_method,
             }
             
             logger.info(f"=== Request completed successfully ===")

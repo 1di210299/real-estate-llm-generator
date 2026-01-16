@@ -12,6 +12,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from .prompts import PROPERTY_EXTRACTION_PROMPT
+from .content_types import get_extraction_prompt, CONTENT_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +24,17 @@ class ExtractionError(Exception):
 
 class PropertyExtractor:
     """
-    Extract structured property data from unstructured HTML/text using LLM.
+    Extract structured data from unstructured HTML/text using LLM.
+    Supports multiple content types: real_estate, tour, restaurant, local_tips, transportation.
     """
     
-    def __init__(self):
+    def __init__(self, content_type: str = 'real_estate'):
+        """
+        Initialize extractor.
+        
+        Args:
+            content_type: Type of content to extract (real_estate, tour, restaurant, etc.)
+        """
         api_key = settings.OPENAI_API_KEY
         logger.info(f"🔑 OPENAI_API_KEY configured: {'Yes' if api_key else 'No'}")
         logger.info(f"🔑 API Key length: {len(api_key) if api_key else 0} chars")
@@ -36,10 +44,18 @@ class PropertyExtractor:
             logger.error("❌ OPENAI_API_KEY is empty! Check environment variables.")
             raise ValueError("OPENAI_API_KEY environment variable is not set")
         
+        # Validate content type
+        if content_type not in CONTENT_TYPES:
+            logger.warning(f"⚠️ Unknown content type: {content_type}, defaulting to real_estate")
+            content_type = 'real_estate'
+        
+        self.content_type = content_type
         self.client = openai.OpenAI(api_key=api_key)
         self.model = settings.OPENAI_MODEL_CHAT
         self.max_tokens = settings.OPENAI_MAX_TOKENS
         self.temperature = 0.1  # Low temperature for consistent extraction
+        
+        logger.info(f"📝 Extractor initialized for content type: {content_type}")
     
     def _clean_content(self, content: str) -> str:
         """Clean and truncate content for LLM processing."""
@@ -171,14 +187,14 @@ class PropertyExtractor:
     
     def extract_from_html(self, html: str, url: Optional[str] = None) -> Dict:
         """
-        Extract property data from HTML content.
+        Extract data from HTML content based on content type.
         
         Args:
             html: HTML content to extract from
             url: Optional source URL
             
         Returns:
-            Dictionary with extracted property data
+            Dictionary with extracted data (fields depend on content_type)
             
         Raises:
             ExtractionError: If extraction fails
@@ -187,8 +203,9 @@ class PropertyExtractor:
         # Clean content
         content = self._clean_content(html)
         
-        # Prepare prompt
-        prompt = PROPERTY_EXTRACTION_PROMPT.format(content=content)
+        # Get the appropriate prompt for this content type
+        extraction_prompt_template = get_extraction_prompt(self.content_type)
+        prompt = extraction_prompt_template.format(content=content)
         
         logger.info(f"Prompt preview (first 800 chars): {prompt[:800]}")
         logger.info(f"Prompt preview (last 800 chars): {prompt[-800:]}")
@@ -294,5 +311,28 @@ def extract_property_data(content: str, url: Optional[str] = None) -> Dict:
         property_name = data['property_name']
         price = data['price_usd']
     """
-    extractor = PropertyExtractor()
+    extractor = PropertyExtractor(content_type='real_estate')
+    return extractor.extract_from_html(content, url=url)
+
+
+def extract_content_data(content: str, content_type: str, url: Optional[str] = None) -> Dict:
+    """
+    Generic function to extract data for any content type.
+    
+    Args:
+        content: HTML or text content to extract from
+        content_type: Type of content (real_estate, tour, restaurant, local_tips, transportation)
+        url: Optional source URL
+        
+    Returns:
+        Dictionary with extracted data (fields depend on content_type)
+        
+    Usage:
+        # Extract tour data
+        data = extract_content_data(html, 'tour', url='https://viator.com/...')
+        
+        # Extract restaurant data  
+        data = extract_content_data(html, 'restaurant', url='https://yelp.com/...')
+    """
+    extractor = PropertyExtractor(content_type=content_type)
     return extractor.extract_from_html(content, url=url)

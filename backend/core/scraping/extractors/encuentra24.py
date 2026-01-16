@@ -49,68 +49,65 @@ class Encuentra24Extractor(BaseExtractor):
     def extract_relevant_html_sections(self, soup: BeautifulSoup) -> str:
         """Extract only relevant HTML sections for AI processing.
         
-        Strategy: Find sections with property details, specs, amenities using:
-        - Common CSS class patterns (detail, info, spec, feature, amenity)
-        - Semantic HTML structures (dl/dt/dd, table, ul/li)
-        - Remove images, scripts, styles, and other noise
+        Strategy: Priority-based extraction of key property data sections
+        - d3-property-details (specs like area, parking, etc.)
+        - d3-property-about (description)
+        - d3-property-info (basic info)
+        - Remove breadcrumbs, navigation, images, scripts
         
         Returns compact semantic HTML with property data structure intact.
         """
-        relevant_sections = []
-        
-        # 1. Search by common class name patterns (case-insensitive)
-        patterns = [
-            'detail', 'info', 'spec', 'feature', 'amenity', 
-            'characteristic', 'attribute', 'insight', 'about',
-            'description', 'descripción'
-        ]
-        
-        for pattern in patterns:
-            sections = soup.find_all(class_=re.compile(pattern, re.I))
-            for section in sections:
-                # Skip if already added
-                if section not in relevant_sections:
-                    relevant_sections.append(section)
-        
-        # 2. Search by semantic HTML structures
-        relevant_sections.extend(soup.find_all(['dl', 'table']))
-        
-        # 3. Search for title/header
-        title = soup.find('h1')
-        if title and title not in relevant_sections:
-            relevant_sections.insert(0, title)
-        
-        # 4. Clean each section
         cleaned_html = []
-        for section in relevant_sections[:15]:  # Limit to first 15 sections
-            # Clone section to avoid modifying original
-            section_copy = BeautifulSoup(str(section), 'html.parser')
-            
-            # Remove noise: scripts, styles, images, links to images
-            for tag in section_copy.find_all(['script', 'style', 'img', 'svg', 'iframe']):
-                tag.decompose()
-            
-            # Remove image links (a tags with img inside or image URLs)
-            for a_tag in section_copy.find_all('a'):
-                href = a_tag.get('href', '')
-                if any(ext in href.lower() for ext in ['.jpg', '.png', '.gif', '.webp', '.jpeg']):
-                    a_tag.decompose()
-                elif a_tag.find('img'):
-                    a_tag.decompose()
-            
-            # Get cleaned HTML
-            section_html = str(section_copy)
-            
-            # Skip if too small or empty
-            if len(section_html.strip()) > 20:
-                cleaned_html.append(section_html)
         
-        # 5. Join sections and limit total size
+        # 1. Extract title (h1)
+        title = soup.find('h1')
+        if title:
+            cleaned_html.append(f"<h1>{title.get_text(strip=True)}</h1>")
+        
+        # 2. PRIORITY: d3-property-details (has all the structured data)
+        property_details = soup.find('div', class_='d3-property-details')
+        if property_details:
+            details_copy = BeautifulSoup(str(property_details), 'html.parser')
+            # Remove images and scripts
+            for tag in details_copy.find_all(['script', 'style', 'img', 'svg', 'iframe']):
+                tag.decompose()
+            # Remove navigation links
+            for a_tag in details_copy.find_all('a'):
+                a_tag.decompose()
+            cleaned_html.append(str(details_copy))
+        
+        # 3. PRIORITY: d3-property-about (description and features)
+        property_about = soup.find('div', class_='d3-property-about')
+        if property_about:
+            about_copy = BeautifulSoup(str(property_about), 'html.parser')
+            for tag in about_copy.find_all(['script', 'style', 'img', 'svg', 'iframe']):
+                tag.decompose()
+            for a_tag in about_copy.find_all('a'):
+                a_tag.decompose()
+            cleaned_html.append(str(about_copy))
+        
+        # 4. d3-property-info (basic property info)
+        property_info = soup.find('div', class_='d3-property-info')
+        if property_info:
+            info_copy = BeautifulSoup(str(property_info), 'html.parser')
+            for tag in info_copy.find_all(['script', 'style', 'img', 'svg', 'iframe']):
+                tag.decompose()
+            for a_tag in info_copy.find_all('a'):
+                a_tag.decompose()
+            cleaned_html.append(str(info_copy))
+        
+        # 5. Look for any remaining dl/dt/dd structures (semantic data)
+        for dl in soup.find_all('dl'):
+            # Skip if already included in above sections
+            if not any(dl in section for section in [property_details, property_about, property_info] if section):
+                cleaned_html.append(str(dl))
+        
+        # 6. Join sections
         combined_html = '\n'.join(cleaned_html)
         
-        # Limit to reasonable size (~8KB max)
-        if len(combined_html) > 8000:
-            combined_html = combined_html[:8000]
+        # Limit to reasonable size (~10KB max for more context)
+        if len(combined_html) > 10000:
+            combined_html = combined_html[:10000]
         
         return combined_html
     
