@@ -11,3 +11,7 @@ class Migration(migrations.Migration):
     operations = [
         CreateExtension('vector'),
     ]
+
+    operations = [
+        CreateExtension('vector'),
+    ]

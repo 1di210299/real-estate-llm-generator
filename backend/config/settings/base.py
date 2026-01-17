@@ -6,6 +6,7 @@ Base settings shared across all environments.
 import os
 from pathlib import Path
 from datetime import timedelta
+from urllib.parse import quote
 import environ
 
 # Build paths
@@ -17,8 +18,12 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, []),
 )
 
-# Read .env file
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+# Read .env file (explicitly, not .env.local)
+env_file = os.path.join(BASE_DIR, '.env')
+if os.path.exists(env_file):
+    environ.Env.read_env(env_file)
+else:
+    raise FileNotFoundError(f"Missing {env_file} configuration file")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-this-in-production')
@@ -98,13 +103,17 @@ CHANNEL_LAYERS = {
 # Database
 # Priority: LOCAL_DB_* vars > DATABASE_URL > default
 if env('LOCAL_DB_NAME', default=None):
-    # Local development mode
+    # Local development mode with PostgreSQL
+    # Escape special characters in password for proper URL encoding
+    db_password = env('LOCAL_DB_PASSWORD', default='')
+    db_password_encoded = quote(db_password, safe='')
+    
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': env('LOCAL_DB_NAME'),
             'USER': env('LOCAL_DB_USER'),
-            'PASSWORD': env('LOCAL_DB_PASSWORD', default=''),
+            'PASSWORD': db_password,  # psycopg2 will handle encoding
             'HOST': env('LOCAL_DB_HOST', default='localhost'),
             'PORT': env('LOCAL_DB_PORT', default='5432'),
         }

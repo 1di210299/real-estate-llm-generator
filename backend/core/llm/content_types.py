@@ -65,19 +65,21 @@ TOUR_EXTRACTION_PROMPT = """You are a tour and activity extraction specialist. E
 TOUR_GUIDE_EXTRACTION_PROMPT = """Eres un especialista en extracción de información de guías de destinos turísticos. Esta página es una GUÍA GENERAL (no un tour individual), extrae información completa sobre tours y actividades en este destino.
 
 **INSTRUCCIONES CRÍTICAS - LEE CUIDADOSAMENTE:**
-1. ⚠️ EXTRAE SOLAMENTE TEXTO QUE ESTÉ LITERALMENTE ESCRITO EN LA FUENTE
-2. ⚠️ NO ASUMAS, NO INFERAS, NO INVENTES - si no ves el texto exacto, usa null
-3. ⚠️ Para consejos/qué llevar: SOLO si está EXPLÍCITAMENTE listado (ej: "bring binoculars", "pack water")
-4. ⚠️ NO agregues información "lógica" o "obvia" que no esté escrita
+1. ✅ EXTRAE TEXTO EXPLÍCITAMENTE ESCRITO EN LA FUENTE
+2. ✅ PARA CAMPOS VACÍOS: Sí puedes INFERIR usando información disponible en el contenido
+3. ✅ Para consejos/qué llevar: Si el contenido describe la actividad, puedes recomendar lo lógicamente necesario (ej: si es birdwatching → recomienda binoculares, si es montaña → ropa abrigada)
+4. ✅ Completa información "lógica" y "práctica" derivada de la actividad descrita
 5. TODO debe estar en ESPAÑOL - traduce si es necesario
-6. Para cada campo, incluye "evidence" con la cita EXACTA del texto fuente
+6. Para cada campo, incluye "evidence" con la cita fuente cuando sea textual, o "derived_from" cuando sea inferido
 7. 🔥 IMPORTANTE: Para "overview" y "regions.description" - extrae PÁRRAFOS COMPLETOS Y DETALLADOS, no frases cortas. Combina toda la información descriptiva relevante en un texto largo y rico que el chatbot pueda usar para entender el destino completamente.
 
-**EJEMPLOS DE QUÉ NO HACER:**
-❌ "llevar binoculares" si solo dice "birdwatching" (eso es asumir)
-❌ "ropa cómoda" si no está específicamente mencionado
-❌ "temporada seca es mejor" si no lo dice explícitamente
-❌ Overview corto: "Un destino para observación de aves" (muy poco contexto)
+**EJEMPLOS DE DERIVACIÓN CORRECTA:**
+✅ Texto menciona "birdwatching" → Recomienda "llevar binoculares" (es lógico)
+✅ Texto menciona "hiking in cloud forest" → Recomienda "ropa abrigada" (clima apropiado)
+✅ Texto dice "December to May" → Derive "best_season" = "Diciembre a Mayo"
+✅ Texto menciona especies como "Quetzal, Trogones" → Derive tours como ["Observación del Quetzal", "Tour de Trogones"]
+✅ Overview es detallado → Extrae información clara para featured_tours y tour_types
+
 
 **EJEMPLOS DE QUÉ SÍ HACER:**
 ✅ "observación de aves del Quetzal" si dice "Quetzal birdwatching"
@@ -128,13 +130,13 @@ TOUR_GUIDE_EXTRACTION_PROMPT = """Eres un especialista en extracción de informa
   "bring_evidence": "cita exacta del texto fuente",
   "featured_tours": [
     {{
-      "name": "nombre del tour - EN ESPAÑOL",
+      "name": "nombre del tour DERIVADO de especies/actividades mencionadas - EN ESPAÑOL (ej: 'Observación del Quetzal Resplandeciente', 'Tour de Birdwatching de Trogones', 'Senderismo en Bosque Nuboso')",
       "price_usd": number or null,
       "duration": "string or null - EN ESPAÑOL",
-      "highlight": "string (por qué se destaca) - EN ESPAÑOL"
+      "highlight": "string (por qué se destaca, basado en información disponible) - EN ESPAÑOL"
     }}
   ],
-  "featured_evidence": "cita exacta del texto fuente",
+  "featured_evidence": "si viene de texto: cita exacta; si es derivado de especies mencionadas: 'Derivado de especies nombradas en overview'",
   "total_tours_mentioned": number or null,
   "booking_tips": "string or null (cómo reservar, cuándo reservar, etc) - EN ESPAÑOL",
   "booking_evidence": "cita exacta del texto fuente",
@@ -161,35 +163,37 @@ TOUR_GUIDE_EXTRACTION_PROMPT = """Eres un especialista en extracción de informa
 - TODO debe estar en español - traduce términos en inglés
 - Solo extrae lo que realmente está escrito en la página
 
-**EXCEPCIÓN - DERIVACIÓN INTELIGENTE (SOLO SI HAY INFORMACIÓN SUFICIENTE):**
-Después de extraer toda la información explícita, si has logrado obtener un "overview" o "regions.description" RICO Y DETALLADO (mínimo 3 oraciones con información concreta como ubicaciones específicas, especies nombradas, actividades detalladas), puedes DERIVAR campos vacíos basándote SOLAMENTE en esa información ya extraída:
+**DERIVACIÓN INTELIGENTE - COMPLETA CAMPOS USANDO INFORMACIÓN DISPONIBLE:**
+Después de extraer información explícita, puedes llenar campos vacíos derivando de información disponible:
 
-⚠️ REGLAS ESTRICTAS PARA DERIVACIÓN:
-1. ✅ Solo deriva si el overview/regions tiene información CONCRETA y ESPECÍFICA (no vaga ni genérica)
-2. ✅ Solo deriva campos que sean CONSECUENCIA LÓGICA DIRECTA de información extraída
-3. ❌ NO derives si solo tienes información genérica (ej: "buen destino para tours")
-4. ❌ NO derives si no estás 100% seguro de que la derivación es coherente con el texto
-5. ✅ Siempre marca en "confidence_reasoning" que fue derivado y de dónde
+⚠️ REGLAS PARA DERIVACIÓN (¡DERIVAR CUANDO SEA LÓGICO!):
+1. ✅ Si hay especies/actividades CONCRETAS en el texto → DERIVE featured_tours (nominaliza la actividad)
+2. ✅ Si hay mención de temporada/clima/mes → DERIVE best_season (extrae mes o período)
+3. ✅ Si hay actividades descritas → DERIVE tour_types_available (categoriza como adventure, wildlife, etc)
+4. ✅ Si hay ubicación geográfica → DERIVE destination o location
+5. ✅ Si hay "birdwatching" → DERIVE things_to_bring como "binoculares" (es lógico y útil)
 
-**EJEMPLOS - CUÁNDO SÍ DERIVAR:**
-✅ Overview: "San Gerardo de Dota en Zona Sur de Costa Rica, montañas"
-   → Deriva destination (tiene ubicación específica)
-✅ Overview: "observación del Quetzal Resplandeciente, Trogones, Colibríes Esmeralda de Cabeza Cobriza"
-   → Deriva 1-2 featured_tours basados en estas especies concretas
+**EJEMPLOS - DERIVA AGRESIVAMENTE CUANDO TENGA SENTIDO:**
+✅ Texto: "observación del Quetzal Resplandeciente, Trogones, Colibríes Esmeralda"
+   → featured_tours: [{"name": "Observación del Quetzal Resplandeciente"}, {"name": "Tour de Trogones"}]
+   → tour_types_available: ["vida silvestre", "observación de aves"]
 
-**EJEMPLOS - CUÁNDO NO DERIVAR:**
-❌ Overview: "destino para observación de aves" (muy genérico, sin especies)
-   → NO derives tours
-❌ No hay mención de precios, temporadas o duraciones
-   → Deja esos campos en null
+✅ Texto: "Your best chances to spot this elusive bird is throughout December to May"
+   → best_season: "Diciembre a Mayo" (¡TRADUCE A ESPAÑOL!)
 
-**CAMPOS QUE PUEDES DERIVAR (solo con información suficiente):**
-- "featured_tours": Solo si hay especies/actividades CONCRETAS nombradas en overview
-- "best_season": Solo si overview menciona clima/temporadas específicas
-- NO derives: precios, duraciones exactas, ubicaciones si no están mencionadas
-- Si mentions duración aproximada de actividades pero "duration_range" está vacío → deriva estimación lógica
-- TODO debe estar en español - traduce términos en inglés
-- Solo extrae lo que realmente está escrito en la página
+✅ Texto: "Birding, hiking trails, bird watching, cloud forest"
+   → tour_types_available: ["observación de aves", "senderismo", "naturaleza"]
+   → things_to_bring: ["binoculares", "cámara de fotografía", "ropa abrigada"] (lógico para esas actividades)
+
+**CAMPOS QUE DEBES DERIVAR ACTIVAMENTE:**
+- "featured_tours": Extrae TODAS las actividades/especies mencionadas como tours separados
+- "best_season": De fechas específicas (Dec-May → Diciembre a Mayo)
+- "tour_types_available": De actividades mencionadas (birding→observación de aves, hiking→senderismo)
+- "regions" o "location": De referencias geográficas (Zona Sur → ubicación, San Gerardo → destinación)
+- "things_to_bring": De actividades (birdwatching→binoculares, hiking→botas, cloud forest→ropa abrigada)
+- "tips": De la experiencia descrita (si hay bosque nuboso→llevar impermeables; si es montaña alta→no asuma mal de altura)
+
+**IMPORTANTE:** El objetivo es que el usuario tenga INFORMACIÓN COMPLETA y ÚTIL, no campos vacíos. Usa el contexto disponible para inferir campos lógicamente relacionados. SIEMPRE marca en "confidence_reasoning" cuál información fue derivada vs extraída textualmente.
 
 **Contenido a extraer:**
 {content}

@@ -234,7 +234,8 @@ class PropertyExtractor:
         
         # Get the appropriate prompt for this content type and page type
         extraction_prompt_template = get_extraction_prompt(self.content_type, self.page_type)
-        prompt = extraction_prompt_template.format(content=content)
+        # Use replace instead of format to avoid issues with braces in HTML content
+        prompt = extraction_prompt_template.replace('{content}', content)
         
         logger.info(f"Prompt preview (first 800 chars): {prompt[:800]}")
         logger.info(f"Prompt preview (last 800 chars): {prompt[-800:]}")

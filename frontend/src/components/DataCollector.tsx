@@ -1190,23 +1190,25 @@ function App() {
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       🗺️ Regiones y Destinos
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       {(extractedProperty as any).regions.map((region: any, index: number) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-cyan-50">
-                          <h4 className="font-semibold text-blue-900 mb-2">
-                            {region.name}
-                          </h4>
-                          {region.description && (
-                            <p className="text-sm text-gray-700 mb-3">
-                              {region.description}
-                            </p>
-                          )}
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-cyan-50 flex flex-col md:flex-row gap-4 items-start md:items-center">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-blue-900 mb-2">
+                              {region.name}
+                            </h4>
+                            {region.description && (
+                              <p className="text-sm text-gray-700 mb-3">
+                                {region.description}
+                              </p>
+                            )}
+                          </div>
                           {region.popular_activities && region.popular_activities.length > 0 && (
-                            <div className="mt-2">
-                              <p className="text-xs font-medium text-gray-600 mb-1">Actividades populares:</p>
+                            <div className="flex-shrink-0">
+                              <p className="text-xs font-medium text-gray-600 mb-1">Actividades:</p>
                               <div className="flex flex-wrap gap-1">
                                 {region.popular_activities.map((activity: string, idx: number) => (
-                                  <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                  <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded whitespace-nowrap">
                                     {activity}
                                   </span>
                                 ))}
