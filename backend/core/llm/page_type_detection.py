@@ -24,7 +24,10 @@ logger = logging.getLogger(__name__)
 
 def detect_page_type(url: str, html: Optional[str] = None, content_type: str = 'tour') -> Dict:
     """
-    Cascading detection of page type (specific vs general).
+    OpenAI-direct page type detection (Opción 1).
+    
+    Elimina heurísticas manuales - usa OpenAI GPT-4o-mini directamente para
+    máxima precisión. Costo: ~$0.005 por página, tiempo: ~3-5s.
     
     Args:
         url: Page URL
@@ -35,168 +38,63 @@ def detect_page_type(url: str, html: Optional[str] = None, content_type: str = '
         {
             'page_type': 'specific' | 'general',
             'confidence': 0.0-1.0,
-            'method': 'url_pattern' | 'preview_llm' | 'openai_browsing',
+            'method': 'openai_direct',
             'indicators': [list of reasons],
             'cost': float (USD),
             'time': float (seconds)
         }
     """
     logger.info("=" * 80)
-    logger.info("🔍 Starting cascading page type detection")
+    logger.info("🤖 OpenAI-Direct Page Type Detection (Opción 1)")
     logger.info(f"   URL: {url}")
     logger.info(f"   Content type: {content_type}")
     logger.info("=" * 80)
     
-    # ========================================================================
-    # LEVEL 1: URL PATTERN ANALYSIS (Free, Instant)
-    # ========================================================================
-    logger.info("📍 LEVEL 1: Analyzing URL patterns...")
-    
-    url_result = _analyze_url_patterns(url, content_type)
-    logger.info(f"   Result: {url_result['page_type']}")
-    logger.info(f"   Confidence: {url_result['confidence']:.0%}")
-    logger.info(f"   Reason: {url_result['reason']}")
-    
-    if url_result['confidence'] >= 0.90:
-        logger.info(f"✅ HIGH CONFIDENCE from URL pattern - STOPPING CASCADE")
-        return {
-            'page_type': url_result['page_type'],
-            'confidence': url_result['confidence'],
-            'method': 'url_pattern',
-            'indicators': [url_result['reason']],
-            'cost': 0.0,
-            'time': 0.1
-        }
-    
-    logger.info(f"⚠️ LOW/MEDIUM confidence from URL - CONTINUING TO LEVEL 2...")
-    logger.info("")
-    
-    # ========================================================================
-    # LEVEL 2: HTML PREVIEW + LLM VALIDATION (Cheap, Fast)
-    # ========================================================================
-    logger.info("📊 LEVEL 2: Analyzing HTML preview with LLM...")
-    
     if not html:
-        logger.warning("⚠️ No HTML provided, cannot do Level 2 validation")
-        logger.info(f"   Using Level 1 result with lower confidence")
+        logger.warning("⚠️ No HTML provided, cannot analyze page")
         return {
-            'page_type': url_result['page_type'],
-            'confidence': url_result['confidence'],
-            'method': 'url_pattern_only',
-            'indicators': [url_result['reason'], 'No HTML for deeper validation'],
+            'page_type': 'general',  # Safe default
+            'confidence': 0.5,
+            'method': 'no_html_fallback',
+            'indicators': ['No HTML content provided'],
             'cost': 0.0,
             'time': 0.1
         }
     
-    # Analyze HTML structure
-    html_result = _analyze_html_structure(html, content_type)
-    logger.info(f"   Result: {html_result['page_type']}")
-    logger.info(f"   Confidence: {html_result['confidence']:.0%}")
-    logger.info(f"   Reason: {html_result['reason']}")
-    logger.info("")
+    # Llamada directa a OpenAI - sin niveles intermedios
+    logger.info("🎯 Calling OpenAI GPT-4o-mini for classification...")
+    openai_result = _analyze_with_openai(url, html, content_type)
     
-    # Combine URL + HTML signals
-    logger.info("🔀 COMBINING SIGNALS:")
-    logger.info(f"   URL says: {url_result['page_type']} ({url_result['confidence']:.0%})")
-    logger.info(f"   HTML says: {html_result['page_type']} ({html_result['confidence']:.0%})")
-    
-    combined_confidence = (url_result['confidence'] * 0.4) + (html_result['confidence'] * 0.6)
-    
-    # Determine page type (weighted vote)
-    url_weight = url_result['confidence']
-    html_weight = html_result['confidence']
-    
-    if url_result['page_type'] == html_result['page_type']:
-        # Agreement = high confidence
-        final_type = url_result['page_type']
-        final_confidence = min(0.95, combined_confidence + 0.15)  # Bonus for agreement
-        agreement = "✅ Both URL and HTML agree"
-        logger.info(f"   {agreement} → {final_type}")
-    else:
-        # Disagreement = trust the stronger signal
-        # In case of tie, prefer HTML (more info than URL)
-        if html_weight > url_weight:
-            final_type = html_result['page_type']
-            final_confidence = html_result['confidence']
-            agreement = "⚠️ HTML signal stronger than URL"
-            logger.info(f"   {agreement} → Using HTML: {final_type}")
-        elif url_weight > html_weight:
-            final_type = url_result['page_type']
-            final_confidence = url_result['confidence']
-            agreement = "⚠️ URL signal stronger than HTML"
-            logger.info(f"   {agreement} → Using URL: {final_type}")
-        else:
-            # Perfect tie - prefer HTML as it has more actual content
-            final_type = html_result['page_type']
-            final_confidence = html_result['confidence'] * 0.9  # Slight penalty for uncertainty
-            agreement = "⚠️ TIE - preferring HTML (more information)"
-            logger.info(f"   {agreement} → Using HTML: {final_type}")
-    
-    logger.info(f"   Final confidence: {final_confidence:.0%}")
-    logger.info("")
-    
-    # ========================================================================
-    # LEVEL 3: Check if we need OpenAI validation (low/medium confidence)
-    # ========================================================================
-    if final_confidence < 0.80:
-        logger.info(f"⚠️ LOW/MEDIUM CONFIDENCE ({final_confidence:.0%}) - ESCALATING TO LEVEL 3...")
-        logger.info("")
-        
-        openai_result = _analyze_with_openai(url, html, content_type)
-        
-        # Combine Level 2 + Level 3 (give more weight to OpenAI)
-        if openai_result['page_type'] == final_type:
-            # Agreement with OpenAI = boost confidence
-            logger.info(f"✅ OpenAI AGREES with Level 2 → {final_type}")
-            final_confidence = min(0.95, openai_result['confidence'])
-            method = 'url_html_openai_agreed'
-        else:
-            # Disagreement = trust OpenAI (it saw the actual content)
-            logger.info(f"⚠️ OpenAI DISAGREES: Level 2={final_type}, OpenAI={openai_result['page_type']}")
-            logger.info(f"   → Using OpenAI result (more reliable)")
-            final_type = openai_result['page_type']
-            final_confidence = openai_result['confidence']
-            method = 'url_html_openai_override'
-        
-        indicators = [
-            url_result['reason'],
-            html_result['reason'],
-            f"OpenAI: {openai_result['reason']}"
-        ]
-        
-        return {
-            'page_type': final_type,
-            'confidence': final_confidence,
-            'method': method,
-            'indicators': indicators,
-            'cost': openai_result['cost'],
-            'time': 0.5 + openai_result['time']
-        }
-    
-    # High confidence from Level 2 - no need for Level 3
-    indicators = [
-        url_result['reason'],
-        html_result['reason'],
-        agreement
-    ]
-    
-    logger.info(f"✅ LEVEL 2 Complete - HIGH CONFIDENCE, skipping Level 3")
-    logger.info(f"   Decision: {final_type}")
-    logger.info(f"   Confidence: {final_confidence:.0%}")
-    logger.info(f"   Combined from: URL ({url_result['confidence']:.0%}) + HTML ({html_result['confidence']:.0%})")
+    logger.info(f"✅ OpenAI Result:")
+    logger.info(f"   Page type: {openai_result['page_type']}")
+    logger.info(f"   Confidence: {openai_result['confidence']:.0%}")
+    logger.info(f"   Reason: {openai_result['reason']}")
+    logger.info(f"   Cost: ${openai_result['cost']:.4f}")
+    logger.info(f"   Time: {openai_result['time']:.2f}s")
+    logger.info("=" * 80)
     
     return {
-        'page_type': final_type,
-        'confidence': final_confidence,
-        'method': 'url_html_combined',
-        'indicators': indicators,
-        'cost': 0.0,  # No LLM call
-        'time': 0.5   # Quick HTML analysis
+        'page_type': openai_result['page_type'],
+        'confidence': openai_result['confidence'],
+        'method': 'openai_direct',
+        'indicators': [f"OpenAI: {openai_result['reason']}"],
+        'cost': openai_result['cost'],
+        'time': openai_result['time']
     }
 
 
 # ============================================================================
-# LEVEL 1: URL PATTERN ANALYSIS
+# DEPRECATED FUNCTIONS (Opción 1: OpenAI-Direct)
+# ============================================================================
+# Las siguientes funciones ya NO se usan en el flujo principal.
+# Se mantienen solo para referencia o posible rollback futuro.
+# 
+# ✅ NUEVO: detect_page_type() usa OpenAI directamente
+# ❌ VIEJO: Cascada de URL → HTML → OpenAI (complejo, poco confiable)
+# ============================================================================
+
+# ============================================================================
+# LEVEL 1: URL PATTERN ANALYSIS (NO USADO)
 # ============================================================================
 
 def _analyze_url_patterns(url: str, content_type: str) -> Dict:
@@ -313,7 +211,7 @@ def _analyze_url_patterns(url: str, content_type: str) -> Dict:
 
 
 # ============================================================================
-# LEVEL 2: HTML STRUCTURE ANALYSIS
+# LEVEL 2: HTML STRUCTURE ANALYSIS (NO USADO)
 # ============================================================================
 
 def _analyze_html_structure(html: str, content_type: str) -> Dict:
@@ -362,9 +260,9 @@ def _analyze_html_structure(html: str, content_type: str) -> Dict:
     logger.info(f"   Found: {booking_found} booking keywords")
     
     if booking_found >= 2:
-        specific_score += 3
+        specific_score += 4  # Increased from 3 to 4 - booking is STRONG indicator
         indicators.append(f'Found {booking_found} booking elements')
-        logger.info(f"   ✅ SPECIFIC indicator: Multiple booking elements (score +3)")
+        logger.info(f"   ✅ SPECIFIC indicator: Multiple booking elements (score +4)")
     else:
         logger.info(f"   ❌ Not enough booking elements")
     
