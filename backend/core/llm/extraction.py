@@ -83,37 +83,65 @@ class PropertyExtractor:
         if meta_desc and meta_desc.get('content'):
             important_text.append(f"META DESCRIPTION: {meta_desc['content']}")
         
-        # 2. Property details sections (common patterns)
+        # 2. ALL headings (h1-h6) - often contain key info like prices, features, sections
+        for heading_tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+            headings = soup.find_all(heading_tag)
+            for heading in headings:
+                text = heading.get_text(strip=True)
+                if text and len(text) > 2:
+                    important_text.append(f"HEADING ({heading_tag.upper()}): {text}")
+        
+        # 3. Property details sections (common patterns)
         detail_patterns = [
-            {'class': lambda x: x and ('show__' in x or 'product' in x or 'detail' in x or 'property' in x)},
-            {'id': lambda x: x and ('detail' in x.lower() or 'overview' in x.lower())},
-            {'class': lambda x: x and any(word in str(x).lower() for word in ['price', 'bedroom', 'bathroom', 'sqft', 'acres', 'lot'])},
+            {'class': lambda x: x and any(word in str(x).lower() for word in 
+                ['show__', 'product', 'detail', 'property', 'tour', 'rate', 'price', 'cost', 'schedule', 'info', 'feature', 'highlight'])},
+            {'id': lambda x: x and any(word in x.lower() for word in 
+                ['detail', 'overview', 'price', 'rate', 'schedule', 'info', 'description', 'feature'])},
         ]
         
         for pattern in detail_patterns:
-            elements = soup.find_all(**pattern)
+            elements = soup.find_all('div', **pattern)
             for elem in elements:
                 text = elem.get_text(separator=' ', strip=True)
                 if text and len(text) > 10:  # Skip very short snippets
-                    important_text.append(text)
+                    important_text.append(f"SECTION: {text[:500]}")  # Limit each section to 500 chars
         
-        # 3. Structured data (JSON-LD, microdata)
+        # 4. Structured data (JSON-LD, microdata) - VERY IMPORTANT
         scripts = soup.find_all('script', type='application/ld+json')
         for script in scripts:
             if script.string:
                 important_text.append(f"STRUCTURED DATA: {script.string}")
         
-        # 4. Description/content paragraphs
-        paragraphs = soup.find_all('p', class_=lambda x: x and ('description' in str(x).lower() or 'copy' in str(x).lower()))
+        # 5. Lists (ul, ol) - often contain features, inclusions, schedules
+        lists = soup.find_all(['ul', 'ol'])
+        for list_elem in lists:
+            items = list_elem.find_all('li')
+            if items and len(items) > 1:  # Only capture lists with multiple items
+                list_text = ' | '.join([item.get_text(strip=True) for item in items[:10]])  # Max 10 items
+                if len(list_text) > 20:
+                    important_text.append(f"LIST: {list_text}")
+        
+        # 6. Description/content paragraphs
+        paragraphs = soup.find_all('p')
         for p in paragraphs:
             text = p.get_text(separator=' ', strip=True)
             if len(text) > 50:  # Skip short paragraphs
-                important_text.append(f"DESCRIPTION: {text}")
+                important_text.append(f"PARAGRAPH: {text[:300]}")  # Limit to 300 chars
         
-        # 5. All remaining text as fallback
-        if not important_text:
+        # 7. Tables - often contain pricing, schedules, features
+        tables = soup.find_all('table')
+        for table in tables:
+            rows = table.find_all('tr')
+            if rows:
+                table_text = ' | '.join([row.get_text(separator=' ', strip=True) for row in rows[:10]])
+                if len(table_text) > 20:
+                    important_text.append(f"TABLE: {table_text}")
+        
+        # 8. All remaining text as fallback (if nothing structured found)
+        if len(important_text) < 10:
             # If no structured sections found, get all text
-            important_text.append(soup.get_text(separator=' ', strip=True))
+            all_text = soup.get_text(separator=' ', strip=True)
+            important_text.append(f"FULL TEXT: {all_text}")
         
         # Combine all extracted text
         combined = '\n\n'.join(important_text)
@@ -121,11 +149,141 @@ class PropertyExtractor:
         # Remove excessive whitespace
         combined = ' '.join(combined.split())
         
-        # Truncate if still too long (max ~100K chars for better coverage)
-        if len(combined) > 100000:
-            combined = combined[:100000] + "...[truncated]"
+        # Truncate if still too long (max ~150K chars for better coverage of pricing/details)
+        # This allows capturing more content while staying within LLM context limits
+        if len(combined) > 150000:
+            combined = combined[:150000] + "...[truncated]"
         
         return combined
+    
+    def _fill_missing_fields_with_inference(self, data: Dict, cleaned_content: str, raw_html: str) -> Dict:
+        """
+        Second pass: Fill missing fields by inferring from full content.
+        
+        This method analyzes which fields are null after initial extraction,
+        then makes a targeted API call to infer/derive those fields from the
+        complete content context.
+        
+        Args:
+            data: Initial extraction results
+            cleaned_content: Cleaned HTML content
+            raw_html: Original HTML
+            
+        Returns:
+            Updated data dictionary with inferred fields
+        """
+        
+        # Define fields that can be inferred for each content type
+        inferable_fields_by_type = {
+            'tour': [
+                'duration_hours', 'difficulty_level', 'included_items', 'excluded_items',
+                'max_participants', 'languages_available', 'pickup_included', 
+                'minimum_age', 'cancellation_policy', 'schedules', 'what_to_bring',
+                'check_in_time', 'restrictions'
+            ],
+            'restaurant': [
+                'opening_hours', 'cuisine_type', 'price_range', 'dress_code',
+                'reservation_required', 'parking_available'
+            ],
+            'real_estate': [
+                'year_built', 'lot_size_m2', 'hoa_fee_monthly', 'property_tax_annual'
+            ]
+        }
+        
+        inferable_fields = inferable_fields_by_type.get(self.content_type, [])
+        
+        # Find which fields are null
+        missing_fields = []
+        for field in inferable_fields:
+            # Check both property_name and content-specific name (e.g., tour_name)
+            if data.get(field) in [None, '', []]:
+                missing_fields.append(field)
+        
+        # If no missing fields or no inferable fields, skip second pass
+        if not missing_fields:
+            logger.info("✅ All fields filled, skipping inference pass")
+            return data
+        
+        logger.info(f"🔍 Second pass: Inferring {len(missing_fields)} missing fields: {missing_fields}")
+        
+        # Build inference prompt
+        inference_prompt = f"""You are analyzing a {self.content_type} page to fill in missing information.
+
+**Already Extracted:**
+{json.dumps({k: v for k, v in data.items() if not k.endswith('_evidence') and k not in ['raw_html', 'field_confidence', 'extracted_at', 'tokens_used']}, indent=2, default=str)}
+
+**Missing Fields to Infer:**
+{', '.join(missing_fields)}
+
+**Full Content:**
+{cleaned_content}
+
+**Instructions:**
+1. Analyze the full content carefully
+2. For each missing field, try to INFER or DERIVE the information from context
+3. Look for implicit information, schedules, lists, restrictions, tips
+4. If a field truly cannot be inferred, return null
+5. Return ONLY valid JSON with the missing fields
+
+**Output Format:**
+```json
+{{
+  "duration_hours": <inferred value or null>,
+  "schedules": <inferred value or null>,
+  "minimum_age": <inferred value or null>,
+  "what_to_bring": <inferred list or null>,
+  "check_in_time": <inferred value or null>,
+  "restrictions": <inferred list or null>,
+  ... (only fields that were missing)
+}}
+```
+
+**Examples of Inference:**
+- If content says "Child rates apply from ages 5 to 12" → minimum_age: 5
+- If content says "8:00am | 9:00am | 10:30am" → schedules: ["08:00", "09:00", "10:30"]
+- If content says "Wear comfortable clothes, sunscreen" → what_to_bring: ["comfortable clothes", "sunscreen", ...]
+- If content says "Check-in 15 minutes prior" → check_in_time: "15 minutes before tour"
+
+Now infer the missing fields:"""
+
+        try:
+            logger.info("🤖 Calling OpenAI for inference...")
+            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are an expert at inferring information from context. Output only valid JSON."},
+                    {"role": "user", "content": inference_prompt}
+                ],
+                temperature=0.3,  # Lower temperature for more factual inference
+                max_tokens=2000,
+                response_format={"type": "json_object"}
+            )
+            
+            inferred_json = response.choices[0].message.content
+            inferred_data = json.loads(inferred_json)
+            
+            logger.info(f"✅ Inferred {len(inferred_data)} fields")
+            logger.info(f"Inferred data: {json.dumps(inferred_data, indent=2, default=str)[:500]}")
+            
+            # Update tokens used
+            data['tokens_used'] = data.get('tokens_used', 0) + response.usage.total_tokens
+            
+            # Merge inferred data into main data
+            filled_count = 0
+            for field, value in inferred_data.items():
+                if value not in [None, '', []]:
+                    data[field] = value
+                    filled_count += 1
+                    logger.info(f"  ✅ Filled {field}: {value}")
+            
+            logger.info(f"🎯 Second pass filled {filled_count}/{len(missing_fields)} fields")
+            
+            return data
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Inference pass failed: {e}, continuing with original data")
+            return data
     
     def _validate_extraction(self, data: Dict) -> Dict:
         """Validate and clean extracted data based on page type."""
@@ -152,6 +310,46 @@ class PropertyExtractor:
                 if field in data:
                     validated[field] = data[field]
         
+        # ============================================================================
+        # FIELD PRESERVATION: Keep content-type specific field names
+        # ============================================================================
+        # Instead of mapping tour_name → property_name, we keep both:
+        # - tour_name, restaurant_name, etc. (original specific fields)
+        # - property_name (copy for DB compatibility)
+        #
+        # This allows frontend to display context-appropriate labels while
+        # maintaining backward compatibility with Property model.
+        
+        field_mapping = {
+            'tour': {
+                'tour_name': 'property_name',
+                'tour_type': 'property_type',
+            },
+            'restaurant': {
+                'restaurant_name': 'property_name',
+                'cuisine_type': 'property_type',
+            },
+            'real_estate': {
+                # Real estate uses property_name/property_type directly (no mapping needed)
+            },
+            'local_tips': {
+                'tip_title': 'property_name',
+                'tip_category': 'property_type',
+            },
+            'transportation': {
+                'service_name': 'property_name',
+                'transport_type': 'property_type',
+            }
+        }
+        
+        # Apply content-type specific mapping (CREATE copies, don't replace)
+        content_mapping = field_mapping.get(self.content_type, {})
+        for source_field, target_field in content_mapping.items():
+            if source_field in data and data[source_field] not in [None, '']:
+                # Copy source to target (keep both fields)
+                data[target_field] = data[source_field]
+                logger.info(f"🔄 Copied {source_field} → {target_field}: {data[source_field]}")
+        
         # For SPECIFIC pages OR common fields, validate property fields
         # Handle price
         if data.get('price_usd'):
@@ -159,6 +357,15 @@ class PropertyExtractor:
                 validated['price_usd'] = Decimal(str(data['price_usd']))
             except (ValueError, TypeError):
                 validated['price_usd'] = None
+        
+        # Handle price_details (JSONField)
+        if data.get('price_details'):
+            try:
+                validated['price_details'] = data['price_details']
+                logger.info(f"💰 Saving price_details: {data['price_details']}")
+            except Exception as e:
+                logger.warning(f"Failed to save price_details: {e}")
+                validated['price_details'] = {}
         
         # Handle integers
         for field in ['bedrooms', 'year_built', 'parking_spaces']:
@@ -177,10 +384,28 @@ class PropertyExtractor:
                 except (ValueError, TypeError):
                     validated[field] = None
         
-        # Handle strings
-        for field in ['property_name', 'property_type', 'location', 'description',
-                     'listing_id', 'internal_property_id', 'listing_status']:
-            validated[field] = data.get(field)
+        # Handle strings - BOTH generic and content-specific fields
+        generic_fields = ['property_name', 'property_type', 'location', 'description',
+                         'listing_id', 'internal_property_id', 'listing_status']
+        
+        # Content-specific fields by type
+        content_specific_fields = {
+            'tour': ['tour_name', 'tour_type', 'duration_hours', 'difficulty_level',
+                    'included_items', 'excluded_items', 'max_participants', 
+                    'languages_available', 'pickup_included', 'minimum_age',
+                    'cancellation_policy', 'schedules', 'what_to_bring',
+                    'check_in_time', 'restrictions'],
+            'restaurant': ['restaurant_name', 'cuisine_type', 'opening_hours',
+                          'price_range', 'dress_code', 'reservation_required'],
+            'real_estate': ['property_name', 'property_type'],
+        }
+        
+        # Add content-specific fields for this content type
+        all_fields = generic_fields + content_specific_fields.get(self.content_type, [])
+        
+        for field in all_fields:
+            if field in data:
+                validated[field] = data.get(field)
         
         # Handle date_listed
         if data.get('date_listed'):
@@ -271,6 +496,17 @@ class PropertyExtractor:
             
             # Validate and clean
             validated_data = self._validate_extraction(extracted_data)
+            
+            # ========================================================================
+            # SECOND PASS: Fill missing fields with inference from full content
+            # ========================================================================
+            # If key fields are still null, make a second API call with full context
+            # to infer/derive missing information
+            validated_data = self._fill_missing_fields_with_inference(
+                validated_data, 
+                content, 
+                html
+            )
             
             # Add metadata
             validated_data['source_url'] = url

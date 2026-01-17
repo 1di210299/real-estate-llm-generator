@@ -867,42 +867,198 @@ export default function BatchProcessing() {
                               className="mt-2 p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-green-200 cursor-pointer hover:border-green-400 hover:shadow-md transition-all"
                             >
                               <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div className="flex items-start gap-2">
-                                  <svg className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                                  </svg>
-                                  <div className="flex-1 min-w-0">
-                                    <span className="text-xs text-gray-600 font-medium block mb-0.5">Nombre</span>
-                                    <p className="font-bold text-gray-900 truncate">{item.result.title || item.result.property_name || 'N/A'}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                  <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                  </svg>
-                                  <div className="flex-1">
-                                    <span className="text-xs text-gray-600 font-medium block mb-0.5">Precio</span>
-                                    <p className="font-bold text-green-700">${item.result.price_usd?.toLocaleString() || 'N/A'}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                  <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                  </svg>
-                                  <div className="flex-1 min-w-0">
-                                    <span className="text-xs text-gray-600 font-medium block mb-0.5">Ubicación</span>
-                                    <p className="font-bold text-gray-900 truncate">{item.result.location || 'N/A'}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                  <svg className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                  </svg>
-                                  <div className="flex-1">
-                                    <span className="text-xs text-gray-600 font-medium block mb-0.5">Tipo</span>
-                                    <p className="font-bold text-gray-900">{item.result.property_type || 'N/A'}</p>
-                                  </div>
-                                </div>
+                                {(() => {
+                                  const result = item.result
+                                  const contentType = result.content_type || 'real_estate'
+                                  const pageType = result.page_type || 'specific'
+
+                                  // GENERAL PAGE - Dynamic fields
+                                  if (pageType === 'general') {
+                                    if (contentType === 'tour') {
+                                      // Format price_range
+                                      let priceDisplay = 'N/A'
+                                      const priceRange = result.price_range
+                                      if (priceRange && typeof priceRange === 'object') {
+                                        if (priceRange.min_usd || priceRange.max_usd) {
+                                          priceDisplay = `$${priceRange.min_usd || 'N/A'} - $${priceRange.max_usd || 'N/A'}`
+                                        }
+                                      } else if (typeof priceRange === 'string') {
+                                        priceDisplay = priceRange
+                                      }
+
+                                      return (
+                                        <>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <div className="flex-1 min-w-0">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Destino</span>
+                                              <p className="font-bold text-gray-900 truncate">{result.destination || 'N/A'}</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <div className="flex-1">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Rango de Precios</span>
+                                              <p className="font-bold text-green-700">{priceDisplay}</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                                            </svg>
+                                            <div className="flex-1 min-w-0">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Tipos de Tours</span>
+                                              <p className="font-bold text-gray-900 truncate">
+                                                {result.tour_types_available?.length || result.total_tours_mentioned || 'N/A'}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                            </svg>
+                                            <div className="flex-1">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Temporada</span>
+                                              <p className="font-bold text-gray-900">{result.best_season || 'N/A'}</p>
+                                            </div>
+                                          </div>
+                                        </>
+                                      )
+                                    } else if (contentType === 'restaurant') {
+                                      return (
+                                        <>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            </svg>
+                                            <div className="flex-1 min-w-0">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Destino</span>
+                                              <p className="font-bold text-gray-900 truncate">{result.destination || 'N/A'}</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <div className="flex-1">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Rango de Precios</span>
+                                              <p className="font-bold text-green-700">{result.typical_price_range || 'N/A'}</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
+                                            </svg>
+                                            <div className="flex-1 min-w-0">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Tipos de Cocina</span>
+                                              <p className="font-bold text-gray-900 truncate">
+                                                {result.cuisine_types?.join(', ') || 'N/A'}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                            </svg>
+                                            <div className="flex-1">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Restaurantes</span>
+                                              <p className="font-bold text-gray-900">{result.featured_items_count || 'N/A'}</p>
+                                            </div>
+                                          </div>
+                                        </>
+                                      )
+                                    } else if (contentType === 'real_estate') {
+                                      return (
+                                        <>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            </svg>
+                                            <div className="flex-1 min-w-0">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Destino</span>
+                                              <p className="font-bold text-gray-900 truncate">{result.destination || 'N/A'}</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <div className="flex-1">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Rango de Precios</span>
+                                              <p className="font-bold text-green-700">{result.typical_price_range || 'N/A'}</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                            </svg>
+                                            <div className="flex-1 min-w-0">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Tipos de Propiedades</span>
+                                              <p className="font-bold text-gray-900 truncate">
+                                                {result.property_types?.join(', ') || 'N/A'}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                            </svg>
+                                            <div className="flex-1">
+                                              <span className="text-xs text-gray-600 font-medium block mb-0.5">Propiedades</span>
+                                              <p className="font-bold text-gray-900">{result.featured_items_count || 'N/A'}</p>
+                                            </div>
+                                          </div>
+                                        </>
+                                      )
+                                    }
+                                  }
+
+                                  // SPECIFIC PAGE - Standard fields for all types
+                                  return (
+                                    <>
+                                      <div className="flex items-start gap-2">
+                                        <svg className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                        </svg>
+                                        <div className="flex-1 min-w-0">
+                                          <span className="text-xs text-gray-600 font-medium block mb-0.5">Nombre</span>
+                                          <p className="font-bold text-gray-900 truncate">{result.title || result.property_name || result.tour_name || result.restaurant_name || 'N/A'}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <div className="flex-1">
+                                          <span className="text-xs text-gray-600 font-medium block mb-0.5">Precio</span>
+                                          <p className="font-bold text-green-700">${result.price_usd?.toLocaleString() || 'N/A'}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                        <div className="flex-1 min-w-0">
+                                          <span className="text-xs text-gray-600 font-medium block mb-0.5">Ubicación</span>
+                                          <p className="font-bold text-gray-900 truncate">{result.location || 'N/A'}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <svg className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                        </svg>
+                                        <div className="flex-1">
+                                          <span className="text-xs text-gray-600 font-medium block mb-0.5">Tipo</span>
+                                          <p className="font-bold text-gray-900">{result.property_type || result.tour_type || result.cuisine_type || 'N/A'}</p>
+                                        </div>
+                                      </div>
+                                    </>
+                                  )
+                                })()}
                               </div>
                               <div className="mt-3 pt-3 border-t border-green-200 text-center">
                                 <span className="text-xs text-green-700 font-semibold flex items-center justify-center gap-1">
@@ -1014,9 +1170,45 @@ export default function BatchProcessing() {
                     if (key === 'price_usd' && typeof value === 'string') {
                       return `$${parseFloat(value).toLocaleString('en-US')}`
                     }
+                    
+                    // Handle price_range object for general pages
+                    if (key === 'price_range' && typeof value === 'object' && value !== null) {
+                      if (value.min_usd || value.max_usd) {
+                        return `$${value.min_usd || 'N/A'} - $${value.max_usd || 'N/A'}`
+                      }
+                      if (value.typical_usd) {
+                        return `~$${value.typical_usd}`
+                      }
+                      return 'Ver detalles abajo'
+                    }
+                    
+                    // Handle price_details object for specific pages
+                    if (key === 'price_details' && typeof value === 'object' && value !== null) {
+                      const parts = []
+                      if (value.adults) parts.push(`Adultos: $${value.adults}`)
+                      if (value.children) parts.push(`Niños: $${value.children}`)
+                      if (value.students) parts.push(`Estudiantes: $${value.students}`)
+                      if (parts.length > 0) return parts.join(' | ')
+                      return 'Ver detalles abajo'
+                    }
+                    
+                    // Handle arrays
                     if (Array.isArray(value)) {
+                      // If array contains objects, show count or first item name
+                      if (value.length > 0 && typeof value[0] === 'object') {
+                        if (value[0].name) {
+                          return value.map(item => item.name).join(', ')
+                        }
+                        return `${value.length} elementos (ver sección dedicada abajo)`
+                      }
                       return value.join(', ')
                     }
+                    
+                    // Handle objects - return a message instead of [object Object]
+                    if (typeof value === 'object' && value !== null) {
+                      return 'Ver sección dedicada abajo'
+                    }
+                    
                     return String(value)
                   }
 
@@ -1028,8 +1220,20 @@ export default function BatchProcessing() {
                     return 'from-gray-50 to-slate-50 border-gray-200'
                   }
 
+                  // Fields that have dedicated sections below (don't show in summary)
+                  const fieldsWithDedicatedSections = [
+                    'regions', 'seasonal_activities', 'faqs', 'featured_tours', 
+                    'included_items', 'excluded_items', 'what_to_bring', 'tips'
+                  ]
+
                   return Object.entries(result)
-                    .filter(([k, v]) => v && k !== 'user_roles' && k !== 'tenant_id' && k !== 'source_website')
+                    .filter(([k, v]) => 
+                      v && 
+                      k !== 'user_roles' && 
+                      k !== 'tenant_id' && 
+                      k !== 'source_website' &&
+                      !fieldsWithDedicatedSections.includes(k)
+                    )
                     .map(([key, value]) => (
                       <div 
                         key={key} 

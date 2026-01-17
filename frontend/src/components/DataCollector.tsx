@@ -11,6 +11,32 @@ interface PropertyData {
   listing_id?: string
   listing_status?: string
   price_usd?: number
+  price_details?: {
+    adults?: number
+    children?: number
+    students?: number
+    nationals?: number
+    seniors?: number
+    groups?: number
+    range?: string
+    note?: string
+    // For restaurants
+    appetizers_range?: string
+    mains_range?: string
+    desserts_range?: string
+    drinks_range?: string
+    // For hotels
+    low_season?: number
+    high_season?: number
+    standard_room?: number
+    deluxe_room?: number
+    suite?: number
+    // For transport
+    one_way?: number
+    round_trip?: number
+    per_person?: number
+    per_vehicle?: number
+  }
   property_type?: string
   property_type_display?: string
   location?: string
@@ -79,7 +105,7 @@ function App() {
   const [supportedWebsites, setSupportedWebsites] = useState<WebsiteConfig[]>([])
   const [websitesLoading, setWebsitesLoading] = useState(true)
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
-  const [selectedContentType, setSelectedContentType] = useState('real_estate')
+  const [selectedContentType, setSelectedContentType] = useState('auto')
   const [propertiesProcessedToday, setPropertiesProcessedToday] = useState<number>(0)
   const [recentProperties, setRecentProperties] = useState<RecentProperty[]>([])
   const [tutorialStep, setTutorialStep] = useState<number | null>(null)
@@ -410,9 +436,13 @@ function App() {
       // Primero iniciar el job en el backend y obtener task_id
       const endpoint = inputType === 'url' ? `${API_BASE}/ingest/url/` : `${API_BASE}/ingest/text/`
       console.log('📤 [FETCH] Starting processing job:', endpoint)
+      
+      // Si es 'auto', enviamos null para que el backend detecte automáticamente
+      const contentTypeValue = selectedContentType === 'auto' ? null : selectedContentType
+      
       const body = inputType === 'url' 
-        ? { url, content_type: selectedContentType, use_websocket: true }
-        : { text, content_type: selectedContentType, use_websocket: true }
+        ? { url, content_type: contentTypeValue, use_websocket: true }
+        : { text, content_type: contentTypeValue, use_websocket: true }
       console.log('📤 [FETCH] Request body:', body)
 
       const response = await fetch(endpoint, {
@@ -812,16 +842,25 @@ function App() {
                   onChange={(e) => setSelectedContentType(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                 >
+                  <option value="auto">
+                    🤖 Auto-detect (Recommended for batch)
+                  </option>
                   {contentTypes.map((type) => (
                     <option key={type.key} value={type.key}>
                       {type.icon} {type.label}
                     </option>
                   ))}
                 </select>
-                {contentTypes.find(t => t.key === selectedContentType) && (
+                {selectedContentType === 'auto' ? (
                   <p className="mt-1 text-xs text-gray-500">
-                    {contentTypes.find(t => t.key === selectedContentType)?.description}
+                    ✨ El sistema detectará automáticamente si es tour, propiedad, restaurante, etc. Ideal para procesar múltiples URLs de diferentes tipos.
                   </p>
+                ) : (
+                  contentTypes.find(t => t.key === selectedContentType) && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {contentTypes.find(t => t.key === selectedContentType)?.description}
+                    </p>
+                  )
                 )}
               </div>
 
@@ -946,18 +985,34 @@ function App() {
                       // Tour Guide Page
                       if (contentType === 'tour') {
                         const tourTypes = (extractedProperty as any).tour_types_available || (extractedProperty as any).tour_types || [];
-                        const priceRange = (extractedProperty as any).price_range 
-                          ? `$${(extractedProperty as any).price_range.min_usd || 'N/A'} - $${(extractedProperty as any).price_range.max_usd || 'N/A'}`
-                          : (extractedProperty as any).typical_price_range;
-                        const featuredCount = (extractedProperty as any).featured_tours?.length || (extractedProperty as any).total_tours_mentioned || (extractedProperty as any).featured_items_count;
+                        
+                        // Format price range
+                        let priceRangeDisplay = t.common.na;
+                        const priceRange = (extractedProperty as any).price_range;
+                        if (priceRange && typeof priceRange === 'object') {
+                          if (priceRange.min_usd || priceRange.max_usd) {
+                            priceRangeDisplay = `$${priceRange.min_usd || 'N/A'} - $${priceRange.max_usd || 'N/A'}`;
+                          }
+                        } else if (typeof priceRange === 'string') {
+                          priceRangeDisplay = priceRange;
+                        }
+                        
+                        // Format featured tours
+                        let featuredToursDisplay = t.common.na;
+                        const featuredTours = (extractedProperty as any).featured_tours;
+                        if (Array.isArray(featuredTours) && featuredTours.length > 0) {
+                          featuredToursDisplay = featuredTours.map((tour: any) => tour.name || tour).join(', ');
+                        } else if ((extractedProperty as any).total_tours_mentioned) {
+                          featuredToursDisplay = `${(extractedProperty as any).total_tours_mentioned} tours disponibles`;
+                        }
                         
                         return [
                           { label: 'Destino', value: (extractedProperty as any).destination },
                           { label: 'Ubicación', value: extractedProperty.location },
                           { label: 'Tipos de Tours', value: Array.isArray(tourTypes) && tourTypes.length > 0 ? tourTypes.join(', ') : t.common.na },
-                          { label: 'Rango de Precios', value: priceRange },
+                          { label: 'Rango de Precios', value: priceRangeDisplay },
                           { label: 'Mejor Temporada', value: (extractedProperty as any).best_season },
-                          { label: 'Tours Destacados', value: featuredCount ? `${featuredCount} tours` : t.common.na },
+                          { label: 'Tours Destacados', value: featuredToursDisplay },
                         ];
                       }
                       // Restaurant Guide Page
@@ -994,7 +1049,28 @@ function App() {
                       return [
                         { label: 'Nombre del Tour', value: extractedProperty.tour_name || extractedProperty.title },
                         { label: 'Tipo de Tour', value: extractedProperty.tour_type },
-                        { label: 'Precio (USD)', value: extractedProperty.price_usd ? `$${parseFloat(String(extractedProperty.price_usd)).toLocaleString()}` : t.common.na },
+                        { 
+                          label: 'Precio (USD)', 
+                          value: (() => {
+                            if (extractedProperty.price_details) {
+                              const pd = extractedProperty.price_details;
+                              const prices = [];
+                              if (pd.adults) prices.push(`Adultos: $${pd.adults}`);
+                              if (pd.children) prices.push(`Niños: $${pd.children}`);
+                              if (pd.students) prices.push(`Estudiantes: $${pd.students}`);
+                              if (pd.nationals) prices.push(`Nacionales: $${pd.nationals}`);
+                              if (pd.seniors) prices.push(`Tercera edad: $${pd.seniors}`);
+                              if (pd.groups) prices.push(`Grupos: $${pd.groups}`);
+                              
+                              let display = prices.length > 0 ? prices.join(' | ') : '';
+                              if (pd.range) display = `${pd.range}${display ? ' (' + display + ')' : ''}`;
+                              if (pd.note) display += ` - ${pd.note}`;
+                              
+                              return display || (extractedProperty.price_usd ? `$${parseFloat(String(extractedProperty.price_usd)).toLocaleString()}` : t.common.na);
+                            }
+                            return extractedProperty.price_usd ? `$${parseFloat(String(extractedProperty.price_usd)).toLocaleString()}` : t.common.na;
+                          })()
+                        },
                         { label: 'Duración', value: extractedProperty.duration_hours ? `${extractedProperty.duration_hours} horas` : t.common.na },
                         { label: 'Dificultad', value: extractedProperty.difficulty_level },
                         { label: 'Ubicación', value: extractedProperty.location },
@@ -1010,7 +1086,26 @@ function App() {
                         { label: 'Nombre', value: extractedProperty.restaurant_name || extractedProperty.title },
                         { label: 'Tipo de Cocina', value: extractedProperty.cuisine_type },
                         { label: 'Rango de Precio', value: extractedProperty.price_range },
-                        { label: 'Precio Promedio', value: extractedProperty.average_price_per_person ? `$${extractedProperty.average_price_per_person}` : t.common.na },
+                        { 
+                          label: 'Precio Promedio', 
+                          value: (() => {
+                            if (extractedProperty.price_details) {
+                              const pd = extractedProperty.price_details;
+                              const ranges = [];
+                              if (pd.range) ranges.push(`General: ${pd.range}`);
+                              if (pd.appetizers_range) ranges.push(`Entradas: ${pd.appetizers_range}`);
+                              if (pd.mains_range) ranges.push(`Platos fuertes: ${pd.mains_range}`);
+                              if (pd.desserts_range) ranges.push(`Postres: ${pd.desserts_range}`);
+                              if (pd.drinks_range) ranges.push(`Bebidas: ${pd.drinks_range}`);
+                              
+                              let display = ranges.join(' | ');
+                              if (pd.note) display += ` - ${pd.note}`;
+                              
+                              return display || (extractedProperty.average_price_per_person ? `$${extractedProperty.average_price_per_person}` : t.common.na);
+                            }
+                            return extractedProperty.average_price_per_person ? `$${extractedProperty.average_price_per_person}` : t.common.na;
+                          })()
+                        },
                         { label: 'Ubicación', value: extractedProperty.location },
                         { label: 'Horario', value: extractedProperty.hours_of_operation },
                         { label: 'Ambiente', value: extractedProperty.atmosphere },
@@ -1295,8 +1390,8 @@ function App() {
                 {/* Description */}
                 {extractedProperty.description && (
                   <div className="col-span-2 border-l-4 border-blue-500 pl-4 py-2 mb-6">
-                    <p className="text-sm text-gray-600">{t.dataCollector.description}</p>
-                    <p className="text-gray-800">{extractedProperty.description.substring(0, 200)}{extractedProperty.description.length > 200 ? '...' : ''}</p>
+                    <p className="text-sm text-gray-600 font-semibold mb-2">{t.dataCollector.description}</p>
+                    <p className="text-gray-800 whitespace-pre-line leading-relaxed">{extractedProperty.description}</p>
                   </div>
                 )}
 

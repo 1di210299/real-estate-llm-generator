@@ -114,17 +114,46 @@ def detect_by_keywords(html: str, min_confidence: float = 0.5) -> Tuple[Optional
         return None, 0.0
 
 
-def classify_with_llm(html: str, client=None) -> Tuple[str, float]:
+def classify_with_llm(html: str, url: str = "", client=None) -> Tuple[str, float]:
     """
     Classify content type using LLM (last resort).
+    Uses the robust OpenAI-based detection from page_type_detection module.
     
     Args:
         html: HTML content to classify
+        url: Source URL (optional but recommended)
         client: OpenAI client (optional, will create if not provided)
         
     Returns:
         Tuple of (content_type, confidence)
     """
+    logger.info("🤖 Using advanced LLM content type detection...")
+    
+    try:
+        # Import the robust detection function
+        from core.llm.page_type_detection import detect_content_type as detect_ct_openai
+        
+        result = detect_ct_openai(url=url, html=html)
+        
+        content_type = result['content_type']
+        confidence = result['confidence']
+        
+        logger.info(f"✅ LLM detected: {content_type} (confidence: {confidence:.2%})")
+        
+        return content_type, confidence
+        
+    except ImportError:
+        logger.warning("⚠️ Advanced detection not available, using fallback...")
+        # Fallback to simple method if module not available
+        return _simple_llm_classify(html, client)
+        
+    except Exception as e:
+        logger.error(f"LLM classification failed: {e}")
+        return 'real_estate', 0.3
+
+
+def _simple_llm_classify(html: str, client=None) -> Tuple[str, float]:
+    """Simple LLM classification fallback."""
     import openai
     from django.conf import settings
     
@@ -138,14 +167,13 @@ def classify_with_llm(html: str, client=None) -> Tuple[str, float]:
             script.decompose()
         text_preview = soup.get_text(separator=' ', strip=True)[:2000]  # First 2000 chars
         
-        logger.info("🤖 Classifying with LLM (last resort)...")
-        
         classification_prompt = f"""Classify the following web content into ONE category. Return ONLY the category key, nothing else.
 
 Categories:
 - real_estate (properties for sale/rent)
 - tour (tours, activities, excursions)
 - restaurant (restaurants, dining, food)
+- accommodation (hotels, lodges, rentals)
 - local_tips (travel tips, advice, local knowledge)
 - transportation (buses, taxis, shuttles, routes)
 
@@ -255,7 +283,7 @@ def detect_content_type(
     # Strategy 4: LLM classification (optional, slow but accurate)
     if use_llm_fallback:
         logger.info("🤖 Using LLM classification as fallback...")
-        llm_type, llm_confidence = classify_with_llm(html)
+        llm_type, llm_confidence = classify_with_llm(html, url=url)
         return {
             'content_type': llm_type,
             'confidence': llm_confidence,

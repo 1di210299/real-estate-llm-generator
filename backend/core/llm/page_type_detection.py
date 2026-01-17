@@ -22,6 +22,39 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 
+def _clean_html_for_analysis(html: str) -> str:
+    """
+    Clean HTML for OpenAI analysis - remove CSS, JS, and unnecessary tags.
+    Keeps only semantic content that's useful for classification.
+    
+    Reduces token usage by ~60% while preserving classification accuracy.
+    """
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Remove tags that don't help with classification
+        for tag in soup(['style', 'script', 'noscript', 'svg', 'path', 'iframe', 'link', 'meta']):
+            tag.decompose()
+        
+        # Remove inline styles and unnecessary attributes
+        for tag in soup.find_all(True):
+            # Keep only semantic attributes
+            keep_attrs = ['class', 'id', 'href', 'alt', 'title']
+            tag.attrs = {k: v for k, v in tag.attrs.items() if k in keep_attrs}
+        
+        # Convert back to string (preserves HTML structure but without CSS/JS)
+        cleaned = str(soup)
+        
+        # Remove excessive whitespace
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        
+        return cleaned
+        
+    except Exception as e:
+        logger.warning(f"HTML cleaning failed: {e}, using original")
+        return html
+
+
 def detect_page_type(url: str, html: Optional[str] = None, content_type: str = 'tour') -> Dict:
     """
     OpenAI-direct page type detection (Opción 1).
@@ -455,13 +488,27 @@ def _analyze_with_openai(url: str, html: str, content_type: str) -> Dict:
     logger.info("🤖 LEVEL 3: OpenAI Analysis")
     logger.info("=" * 60)
     
-    # Truncate HTML to reasonable size (first 8000 chars usually has the key info)
-    html_preview = html[:8000] if len(html) > 8000 else html
+    # Clean HTML - remove CSS, JS, and unnecessary tags
+    html_cleaned = _clean_html_for_analysis(html)
     
-    logger.info(f"Analyzing {len(html_preview):,} characters with OpenAI...")
+    # Truncate cleaned HTML to fit within token limits
+    # GPT-4o-mini has 128K context, but we limit to ~12K chars (~3K tokens) to reduce cost
+    # 12K chars captures more content (pricing, features) while staying cost-effective
+    html_preview = html_cleaned[:12000] if len(html_cleaned) > 12000 else html_cleaned
+    
+    logger.info(f"Original HTML: {len(html):,} chars → Cleaned: {len(html_cleaned):,} chars → Preview: {len(html_preview):,} chars")
     logger.info(f"Content type: {content_type}")
     
-    prompt = f"""Analyze this webpage and determine if it's a SPECIFIC item page or a GENERAL listing/guide page.
+    # DEBUG: Log preview to see what OpenAI is seeing
+    logger.info("=" * 60)
+    logger.info("🔍 HTML PREVIEW BEING SENT TO OPENAI:")
+    logger.info("=" * 60)
+    logger.info(html_preview[:1000])  # First 1000 chars
+    logger.info("...")
+    logger.info(html_preview[-500:])  # Last 500 chars
+    logger.info("=" * 60)
+    
+    prompt = f"""Classify this webpage as SPECIFIC or GENERAL for a data extraction system.
 
 URL: {url}
 Content Type: {content_type}
@@ -469,14 +516,43 @@ Content Type: {content_type}
 HTML Preview:
 {html_preview}
 
-Determine:
-1. Is this a SPECIFIC page (single {content_type} item with full details)?
-   - Examples: Single tour details, one restaurant page, one property listing
-   - Indicators: "Book Now" button, detailed description, single price, reviews for ONE item
+CONTEXT: We're building a database. We need to know if this page contains data for ONE item or MULTIPLE items.
+
+**SPECIFIC** = Page about ONE individual {content_type} that we can save as a single database record
+   Examples:
+   - Single tour: "Monteverde Canopy Tour" - has price $75, itinerary, duration, booking button
+   - Single property: "Casa Vista Mar" - has $450K price, 3BR/2BA, square footage, contact agent
+   - Single restaurant: "La Terraza" - has menu, hours, address, phone, reservation button
    
-2. Or is this a GENERAL page (multiple items, guide, or category listing)?
-   - Examples: List of tours, restaurant directory, property search results
-   - Indicators: Multiple cards/items, filters, pagination, "Browse", "View all"
+   Key signals:
+   ✅ ONE main item being described
+   ✅ Specific price for THIS item (not multiple prices)
+   ✅ Detailed specs/features for THIS item only
+   ✅ "Book Now" or "Contact" button for THIS specific item
+   ✅ Reviews about THIS specific item
+   
+**GENERAL** = Destination guide or directory listing MULTIPLE {content_type}s
+   Examples:
+   - "San Gerardo de Dota Tours" - describes the destination + lists 5-10 available tours
+   - "Miami Condos" - market overview + shows 20 condo listings  
+   - "Paris Restaurants" - neighborhood guide + directory of 15 restaurants
+   
+   Key signals:
+   ✅ Describes a LOCATION or CATEGORY (not one item)
+   ✅ Lists MULTIPLE items (even just 3-5)
+   ✅ Has links to individual item pages
+   ✅ General destination info (climate, attractions, what to expect)
+   ✅ Filters, sorting, "View all" buttons
+   
+CRITICAL DECISION RULES:
+1. If page lists 3+ different tours/items → GENERAL (even if one is highlighted)
+2. If page describes a destination AND shows tour options → GENERAL (it's a guide)
+3. If page has "Choose your tour" or similar → GENERAL (it's a catalog)
+4. Only classify as SPECIFIC if there's truly ONE single bookable item being sold
+
+EXAMPLE EDGE CASES:
+- "San Gerardo Tours" page with destination info + 8 tour listings → GENERAL
+- "Hanging Bridges Tour" page with only that tour, price $35, book button → SPECIFIC
 
 Respond ONLY with valid JSON:
 {{
@@ -533,6 +609,182 @@ Respond ONLY with valid JSON:
             'confidence': 0.40,
             'reason': f'OpenAI analysis failed: {str(e)}',
             'indicators': ['error'],
+            'cost': 0.0,
+            'time': time.time() - start_time
+        }
+
+
+# ============================================================================
+# CONTENT TYPE DETECTION (Auto-classify: tour, restaurant, real_estate, etc.)
+# ============================================================================
+
+def detect_content_type(url: str, html: Optional[str] = None) -> Dict:
+    """
+    Detect content type using OpenAI (same logic as page_type detection).
+    
+    Automatically classifies if the page is about:
+    - tour (tours, activities, adventures)
+    - restaurant (dining, food, cafes)
+    - accommodation (hotels, lodges, rentals)
+    - real_estate (properties for sale/rent)
+    - local_tips (travel tips, guides)
+    - transportation (transfers, shuttles, buses)
+    
+    Args:
+        url: Page URL
+        html: Optional HTML content (if already scraped)
+        
+    Returns:
+        {
+            'content_type': 'tour' | 'restaurant' | 'accommodation' | 'real_estate' | 'local_tips' | 'transportation',
+            'confidence': 0.0-1.0,
+            'method': 'openai_direct',
+            'reasoning': 'explanation',
+            'cost': float (USD),
+            'time': float (seconds)
+        }
+    """
+    logger.info("=" * 80)
+    logger.info("🎯 Auto-Detecting Content Type")
+    logger.info(f"   URL: {url}")
+    logger.info("=" * 80)
+    
+    if not html:
+        logger.warning("⚠️ No HTML provided, cannot analyze content type")
+        return {
+            'content_type': 'tour',  # Safe default
+            'confidence': 0.5,
+            'method': 'no_html_fallback',
+            'reasoning': 'No HTML content provided',
+            'cost': 0.0,
+            'time': 0.1
+        }
+    
+    logger.info("🤖 Calling OpenAI GPT-4o-mini for content type classification...")
+    openai_result = _analyze_content_type_with_openai(url, html)
+    
+    logger.info(f"✅ OpenAI Result:")
+    logger.info(f"   Content Type: {openai_result['content_type']}")
+    logger.info(f"   Confidence: {openai_result['confidence']:.0%}")
+    logger.info(f"   Reasoning: {openai_result['reasoning']}")
+    logger.info(f"   Cost: ${openai_result['cost']:.4f}")
+    logger.info(f"   Time: {openai_result['time']:.2f}s")
+    logger.info("=" * 80)
+    
+    return openai_result
+
+
+def _analyze_content_type_with_openai(url: str, html: str) -> Dict:
+    """
+    Use OpenAI to classify content type.
+    
+    Similar to _analyze_with_openai but for content classification.
+    """
+    import openai
+    from django.conf import settings
+    import time
+    import json
+    
+    start_time = time.time()
+    
+    # Clean and truncate HTML
+    html_cleaned = _clean_html_for_analysis(html)
+    html_preview = html_cleaned[:12000] if len(html_cleaned) > 12000 else html_cleaned
+    
+    logger.info(f"HTML: {len(html):,} → {len(html_cleaned):,} → {len(html_preview):,} chars")
+    
+    prompt = f"""Classify the content type of this webpage for a data extraction system.
+
+URL: {url}
+
+HTML Preview:
+{html_preview}
+
+**AVAILABLE CONTENT TYPES:**
+
+1. **tour** - Tours, activities, adventures, excursions, experiences
+   Examples: "Monteverde Zipline", "City Walking Tour", "Snorkeling Adventure"
+   Signals: Duration, difficulty, included items, tour operator, age restrictions, itinerary
+
+2. **restaurant** - Restaurants, cafes, dining establishments, bars
+   Examples: "La Terraza Restaurant", "Beachfront Cafe", "Italian Bistro"
+   Signals: Menu, cuisine type, hours, reservations, dishes, chef, ambiance
+
+3. **accommodation** - Hotels, lodges, hostels, rentals, B&Bs, resorts
+   Examples: "Sunset Hotel", "Mountain Lodge", "Beach Villa"
+   Signals: Room types, amenities, check-in/out, nightly rates, star rating, facilities
+
+4. **real_estate** - Properties for sale or rent (houses, condos, land)
+   Examples: "Casa Vista Mar $450K", "Downtown Condo for Sale"
+   Signals: Price (usually $100K+), bedrooms, bathrooms, square footage, lot size, listing agent
+
+5. **local_tips** - Travel tips, destination guides, advice articles
+   Examples: "What to Pack for Costa Rica", "Safety Tips", "Best Time to Visit"
+   Signals: Advice, tips list, "how to", general destination info, no specific business
+
+6. **transportation** - Shuttles, transfers, buses, car rentals, transport services
+   Examples: "Airport Shuttle", "San Jose to Jaco Bus", "Car Rental"
+   Signals: Routes, schedules, per person/vehicle pricing, pickup/dropoff
+
+**DECISION RULES:**
+- If page sells/markets tours or activities → **tour**
+- If page is a dining establishment → **restaurant**  
+- If page offers lodging/rooms → **accommodation**
+- If page lists property for purchase → **real_estate**
+- If page gives general travel advice → **local_tips**
+- If page offers transport services → **transportation**
+
+Return your answer as JSON:
+{{
+  "content_type": "tour|restaurant|accommodation|real_estate|local_tips|transportation",
+  "confidence": 0.0-1.0,
+  "reasoning": "Brief explanation of why you chose this type",
+  "key_signals": ["signal1", "signal2", "signal3"]
+}}"""
+
+    try:
+        client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a content classification expert. Analyze web pages and determine their content type accurately."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.1,
+            response_format={"type": "json_object"}
+        )
+        
+        result = json.loads(response.choices[0].message.content)
+        
+        elapsed = time.time() - start_time
+        cost = (response.usage.total_tokens / 1000) * 0.0015  # GPT-4o-mini pricing
+        
+        logger.info(f"✅ Content Type Analysis Complete:")
+        logger.info(f"   Type: {result['content_type']}")
+        logger.info(f"   Confidence: {result['confidence']:.0%}")
+        logger.info(f"   Reasoning: {result['reasoning']}")
+        logger.info(f"   Signals: {', '.join(result['key_signals'][:3])}")
+        logger.info(f"   Time: {elapsed:.2f}s")
+        logger.info(f"   Cost: ${cost:.4f}")
+        logger.info(f"   Tokens: {response.usage.total_tokens}")
+        
+        return {
+            'content_type': result['content_type'],
+            'confidence': float(result['confidence']),
+            'reasoning': result['reasoning'],
+            'key_signals': result['key_signals'],
+            'cost': cost,
+            'time': elapsed
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Content type detection failed: {e}")
+        return {
+            'content_type': 'tour',  # Safe fallback
+            'confidence': 0.40,
+            'reasoning': f'Detection failed: {str(e)}',
+            'key_signals': ['error'],
             'cost': 0.0,
             'time': time.time() - start_time
         }

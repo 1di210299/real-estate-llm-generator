@@ -96,7 +96,14 @@ class Property(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
-        help_text=_('Price in US dollars')
+        help_text=_('Price in US dollars (lowest price if multiple categories)')
+    )
+    
+    price_details = models.JSONField(
+        _('Price Details'),
+        default=dict,
+        blank=True,
+        help_text=_('Detailed pricing information: adults, children, students, etc. for tours; ranges for restaurants/hotels')
     )
     
     bedrooms = models.IntegerField(

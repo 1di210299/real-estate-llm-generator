@@ -248,17 +248,33 @@ class IngestURLView(APIView):
                 source_website = detect_source_website(url)
             
             # NEW: Detect content type (real_estate, tour, restaurant, etc.)
+            # Strategy: Try fast methods first (domain/keywords), use LLM if confidence is low
             content_detection = detect_content_type(
                 url=url,
                 html=html_content,
                 user_override=user_content_type,
-                use_llm_fallback=False
+                use_llm_fallback=False  # Try fast methods first
             )
             detected_content_type = content_detection['content_type']
             content_type_confidence = content_detection['confidence']
             detection_method = content_detection['method']
             
-            logger.info(f"Content type detected: {detected_content_type} (confidence: {content_type_confidence:.2%}, method: {detection_method})")
+            # If confidence is low (<70%) and user didn't specify, use LLM for better accuracy
+            if content_type_confidence < 0.70 and not user_content_type:
+                logger.info(f"⚠️ Low confidence ({content_type_confidence:.0%}), retrying with LLM...")
+                tracker.update(36, "Analizando con IA para mayor precisión...", stage="Análisis", substage="Clasificación avanzada")
+                
+                content_detection = detect_content_type(
+                    url=url,
+                    html=html_content,
+                    user_override=user_content_type,
+                    use_llm_fallback=True  # Use LLM for better accuracy
+                )
+                detected_content_type = content_detection['content_type']
+                content_type_confidence = content_detection['confidence']
+                detection_method = content_detection['method']
+            
+            logger.info(f"✅ Content type: {detected_content_type} (confidence: {content_type_confidence:.2%}, method: {detection_method})")
             
             tracker.update(37, f"Sitio: {source_website} | Tipo: {detected_content_type}", stage="Análisis")
             time.sleep(0.2)
