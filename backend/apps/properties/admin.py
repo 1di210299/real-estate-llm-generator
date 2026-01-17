@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Property, PropertyImage
+from .models import Property, PropertyImage, ContentGuide
 
 
 class PropertyImageInline(admin.TabularInline):
@@ -76,3 +76,49 @@ class PropertyImageAdmin(admin.ModelAdmin):
     list_display = ('property', 'caption', 'order', 'is_primary', 'created_at')
     list_filter = ('is_primary', 'created_at')
     search_fields = ('property__property_name', 'caption')
+
+
+@admin.register(ContentGuide)
+class ContentGuideAdmin(admin.ModelAdmin):
+    list_display = ('title', 'content_type', 'destination', 'source_website', 
+                    'featured_items_count', 'extraction_confidence', 'created_at')
+    list_filter = ('content_type', 'page_type', 'source_website', 'tenant', 'created_at')
+    search_fields = ('title', 'destination', 'location', 'overview')
+    readonly_fields = ('id', 'extraction_confidence', 'extraction_method', 
+                      'created_at', 'updated_at', 'featured_items_count')
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('id', 'tenant', 'title', 'content_type', 'page_type')
+        }),
+        ('Location', {
+            'fields': ('destination', 'location')
+        }),
+        ('Content', {
+            'fields': ('overview', 'structured_data', 'tips')
+        }),
+        ('Pricing & Timing', {
+            'fields': ('typical_price_range', 'best_season')
+        }),
+        ('Featured Items', {
+            'fields': ('featured_items', 'featured_items_count'),
+            'description': 'List of featured items found on this page'
+        }),
+        ('Access Control', {
+            'fields': ('user_roles',)
+        }),
+        ('Source & Extraction', {
+            'fields': ('source_url', 'source_website', 'extraction_confidence', 
+                      'extraction_method')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    actions = ['refresh_extraction']
+    
+    def refresh_extraction(self, request, queryset):
+        # TODO: Implement re-extraction from source URL
+        self.message_user(request, f"Re-extraction queued for {queryset.count()} guides.")
+    refresh_extraction.short_description = "Re-extract from source URL"

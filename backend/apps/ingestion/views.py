@@ -260,7 +260,24 @@ class IngestURLView(APIView):
             
             logger.info(f"Content type detected: {detected_content_type} (confidence: {content_type_confidence:.2%}, method: {detection_method})")
             
-            tracker.update(40, f"Sitio: {source_website} | Tipo: {detected_content_type}", stage="Análisis")
+            tracker.update(37, f"Sitio: {source_website} | Tipo: {detected_content_type}", stage="Análisis")
+            time.sleep(0.2)
+            
+            # NEW: Detect page type (specific item vs general guide/listing)
+            from core.llm.page_type_detection import detect_page_type
+            
+            page_detection = detect_page_type(
+                url=url,
+                html=html_content,
+                content_type=detected_content_type
+            )
+            detected_page_type = page_detection['page_type']
+            page_type_confidence = page_detection['confidence']
+            page_detection_method = page_detection['method']
+            
+            logger.info(f"Page type detected: {detected_page_type} (confidence: {page_type_confidence:.2%}, method: {page_detection_method})")
+            
+            tracker.update(40, f"Sitio: {source_website} | Tipo: {detected_content_type} | Página: {detected_page_type}", stage="Análisis")
             time.sleep(0.2)
             
             # Step 3: Extraction (40-80%)
@@ -286,8 +303,13 @@ class IngestURLView(APIView):
                 extraction_confidence = 0.95
             else:
                 tracker.update(50, "Usando extracción con IA...", stage="Extracción", substage="Procesando con LLM")
-                # Use content-type specific extraction
-                extracted_data = extract_content_data(html_content, content_type=detected_content_type, url=url)
+                # Use content-type specific extraction with page type detection
+                extracted_data = extract_content_data(
+                    html_content, 
+                    content_type=detected_content_type, 
+                    page_type=detected_page_type,
+                    url=url
+                )
                 tracker.update(75, "IA completó la extracción", stage="Extracción", substage="Completado")
                 extraction_method = 'llm_based'
                 extraction_confidence = extracted_data.get('extraction_confidence', 0.5)
@@ -309,17 +331,44 @@ class IngestURLView(APIView):
             for field in metadata_fields:
                 extracted_data.pop(field, None)
             
-            evidence_fields = [key for key in extracted_data.keys() if key.endswith('_evidence')]
+            # Remove evidence fields
+            evidence_fields = [key for key in list(extracted_data.keys()) if key.endswith('_evidence')]
             for field in evidence_fields:
                 extracted_data.pop(field, None)
+            
+            # IMPORTANT: For general pages, preserve guide-specific fields
+            # These fields are NOT in Property model but needed for frontend display
+            guide_fields_to_preserve = [
+                'destination', 'overview', 'tour_types_available',
+                'price_range', 'best_season', 'best_time_of_day', 'duration_range',
+                'tips', 'things_to_bring', 'featured_tours', 'total_tours_mentioned',
+                'booking_tips', 'cuisine_types', 'property_types', 'featured_items_count'
+            ]
+            # Store them temporarily BEFORE removing anything
+            preserved_data = {}
+            if detected_page_type == 'general':
+                logger.info(f"🔍 Preserving guide fields for general page...")
+                for field in guide_fields_to_preserve:
+                    if field in extracted_data:
+                        preserved_data[field] = extracted_data[field]
+                        logger.info(f"  ✅ Preserved: {field} = {extracted_data[field]}")
+                logger.info(f"📦 Total preserved fields: {len(preserved_data)}")
             
             tenant_id = extracted_data['tenant'].id if extracted_data.get('tenant') else None
             extracted_data['tenant_id'] = tenant_id
             extracted_data.pop('tenant', None)
             
+            # Restore preserved guide fields
+            if preserved_data:
+                logger.info(f"♻️  Restoring {len(preserved_data)} guide fields...")
+                extracted_data.update(preserved_data)
+                logger.info(f"📦 Final extracted_data keys after restore: {list(extracted_data.keys())}")
+            
             tracker.update(95, "Datos listos", stage="Procesamiento", substage="Preparando respuesta")
             
-            # Send completion with serialized data INCLUDING content_type info
+            # Send completion with serialized data INCLUDING content_type and page_type info
+            logger.info(f"📦 Sending response - Page type: {detected_page_type}, Keys: {list(extracted_data.keys())[:10]}")
+            
             tracker.complete(serialize_for_json({
                 'property': extracted_data,
                 'extraction_method': extraction_method,
@@ -328,6 +377,9 @@ class IngestURLView(APIView):
                 'content_type': detected_content_type,
                 'content_type_confidence': content_type_confidence,
                 'content_type_detection_method': detection_method,
+                'page_type': detected_page_type,
+                'page_type_confidence': page_type_confidence,
+                'page_type_detection_method': page_detection_method,
             }), message="Extracción completada exitosamente")
             
             tracker.update(100, "¡Completado!", stage="Completado")
@@ -409,6 +461,20 @@ class IngestURLView(APIView):
             
             logger.info(f"Content type detected: {detected_content_type} (confidence: {content_type_confidence:.2%}, method: {detection_method})")
             
+            # NEW: Detect page type (specific item vs general guide/listing)
+            from core.llm.page_type_detection import detect_page_type
+            
+            page_detection = detect_page_type(
+                url=url,
+                html=html_content,
+                content_type=detected_content_type
+            )
+            detected_page_type = page_detection['page_type']
+            page_type_confidence = page_detection['confidence']
+            page_detection_method = page_detection['method']
+            
+            logger.info(f"Page type detected: {detected_page_type} (confidence: {page_type_confidence:.2%}, method: {page_detection_method})")
+            
             # Step 3: Get site-specific extractor (only for real_estate)
             if detected_content_type == 'real_estate':
                 extractor = get_extractor(url)
@@ -433,19 +499,16 @@ class IngestURLView(APIView):
                 extraction_confidence = 0.95  # High confidence for rule-based extraction
                 
             else:
-                logger.info(f"⚠ Using LLM extraction for content type: {detected_content_type}")
+                logger.info(f"⚠ Using LLM extraction for content type: {detected_content_type}, page type: {detected_page_type}")
                 
-                # Use LLM-based extraction with appropriate content type prompt
-                if detected_content_type == 'real_estate':
-                    logger.info("Extracting real_estate data with LLM...")
-                    extracted_data = extract_property_data(html_content, url=url)
-                else:
-                    logger.info(f"Extracting {detected_content_type} data with specialized LLM prompt...")
-                    extracted_data = extract_content_data(
-                        content=html_content,
-                        content_type=detected_content_type,
-                        url=url
-                    )
+                # Use LLM-based extraction with appropriate content type AND page type prompt
+                logger.info(f"Extracting {detected_content_type} data with LLM (page_type: {detected_page_type})...")
+                extracted_data = extract_content_data(
+                    content=html_content,
+                    content_type=detected_content_type,
+                    page_type=detected_page_type,
+                    url=url
+                )
                 
                 logger.info(f"Extraction complete. Confidence: {extracted_data.get('extraction_confidence')}")
                 
@@ -470,9 +533,22 @@ class IngestURLView(APIView):
                 extracted_data.pop(field, None)
             
             # Also remove all *_evidence fields
-            evidence_fields = [key for key in extracted_data.keys() if key.endswith('_evidence')]
+            evidence_fields = [key for key in list(extracted_data.keys()) if key.endswith('_evidence')]
             for field in evidence_fields:
                 extracted_data.pop(field, None)
+            
+            # IMPORTANT: For general pages, preserve guide-specific fields
+            guide_fields_to_preserve = [
+                'destination', 'overview', 'tour_types_available', 'types_evidence',
+                'price_range', 'best_season', 'best_time_of_day', 'duration_range',
+                'tips', 'things_to_bring', 'featured_tours', 'total_tours_mentioned',
+                'booking_tips', 'cuisine_types', 'property_types', 'featured_items_count'
+            ]
+            preserved_data = {}
+            if detected_page_type == 'general':
+                for field in guide_fields_to_preserve:
+                    if field in extracted_data:
+                        preserved_data[field] = extracted_data[field]
             
             logger.info(f"Cleaned extracted_data keys: {list(extracted_data.keys())}")
             
@@ -484,6 +560,11 @@ class IngestURLView(APIView):
             tenant_id = extracted_data['tenant'].id if extracted_data.get('tenant') else None
             extracted_data['tenant_id'] = tenant_id
             extracted_data.pop('tenant', None)  # Remove the non-serializable tenant object
+            
+            # Restore preserved guide fields
+            if preserved_data:
+                extracted_data.update(preserved_data)
+                logger.info(f"Restored guide fields: {list(preserved_data.keys())}")
             
             # Return extracted data without saving to database
             response_data = {
@@ -497,6 +578,10 @@ class IngestURLView(APIView):
                 'content_type': detected_content_type,
                 'content_type_confidence': content_type_confidence,
                 'content_type_detection_method': detection_method,
+                # NEW: Page type information
+                'page_type': detected_page_type,
+                'page_type_confidence': page_type_confidence,
+                'page_type_detection_method': page_detection_method,
             }
             
             logger.info(f"=== Request completed successfully ===")

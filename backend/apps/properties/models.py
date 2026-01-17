@@ -486,3 +486,175 @@ class PropertyImage(models.Model):
     
     def __str__(self):
         return f"Image for {self.property.property_name}"
+
+
+class ContentGuide(models.Model):
+    """
+    General guide/overview pages (listings, category pages, destination guides).
+    Stores aggregate information about multiple items rather than single specific items.
+    
+    Examples:
+    - Tour guide for a destination (costarica.org/tours/)
+    - Restaurant directory for a city
+    - Property listings for a neighborhood
+    """
+    
+    # Identification
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='content_guides',
+        help_text=_('Organization that owns this guide')
+    )
+    
+    # Content Type
+    content_type = models.CharField(
+        max_length=50,
+        default='tour',
+        help_text=_('Type of content: tour, restaurant, real_estate, local_tips, transportation')
+    )
+    
+    page_type = models.CharField(
+        max_length=20,
+        default='general',
+        help_text=_('Should always be "general" for this model')
+    )
+    
+    # Location/Destination Info
+    destination = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text=_('Destination or location name (e.g., "Costa Rica", "Manuel Antonio")')
+    )
+    
+    location = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text=_('City/region/area')
+    )
+    
+    # General Content
+    title = models.CharField(
+        max_length=500,
+        help_text=_('Page title or guide name')
+    )
+    
+    overview = models.TextField(
+        blank=True,
+        null=True,
+        help_text=_('General description/overview of what this page offers')
+    )
+    
+    # Type-specific structured data (JSON)
+    # For tours: {"tour_types": ["volcano", "beach"], "price_range": "$50-$200"}
+    # For restaurants: {"cuisine_types": ["italian", "seafood"], "price_level": "$$-$$$"}
+    structured_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=_('Structured data specific to content type')
+    )
+    
+    # Featured/Popular Items
+    featured_items = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=_('List of featured items with basic info: [{name, url, price, rating}]')
+    )
+    
+    # Tips and Recommendations
+    tips = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=_('General tips or advice (e.g., ["Book in advance", "Bring sunscreen"])')
+    )
+    
+    # Best times/seasons
+    best_season = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text=_('Best time to visit/book (e.g., "December - April")')
+    )
+    
+    # Price information
+    typical_price_range = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text=_('Typical price range (e.g., "$50-$200")')
+    )
+    
+    # Source Information
+    source_url = models.URLField(
+        max_length=1000,
+        help_text=_('Original source URL')
+    )
+    
+    source_website = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text=_('Source website name')
+    )
+    
+    # Metadata
+    extraction_confidence = models.FloatField(
+        default=0.5,
+        help_text=_('Confidence score of extraction (0.0 - 1.0)')
+    )
+    
+    extraction_method = models.CharField(
+        max_length=50,
+        default='llm_based',
+        help_text=_('Method used for extraction')
+    )
+    
+    # User roles who can access
+    user_roles = ArrayField(
+        models.CharField(max_length=50),
+        default=list,
+        blank=True,
+        help_text=_('Roles that can access this guide')
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text=_('When this guide was created')
+    )
+    
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text=_('When this guide was last updated')
+    )
+    
+    # Search
+    search_vector = SearchVectorField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'content_guides'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['tenant', 'content_type']),
+            models.Index(fields=['destination']),
+            models.Index(fields=['source_website']),
+            models.Index(fields=['-created_at']),
+        ]
+        verbose_name = _('Content Guide')
+        verbose_name_plural = _('Content Guides')
+    
+    def __str__(self):
+        return f"{self.title} ({self.content_type})"
+    
+    @property
+    def featured_items_count(self):
+        """Count of featured items."""
+        return len(self.featured_items) if self.featured_items else 0

@@ -92,15 +92,23 @@ function App() {
   // WebSocket progress tracking
   const { progress, isConnected, connect, disconnect: _disconnect, reset } = useProgressWebSocket({
     onComplete: (data) => {
-      console.log('✅ Process complete:', data);
+      console.log('✅ Backend response:', data);
       if (data && data.property) {
-        // Include content_type info in the property
+        console.log('📦 Property data keys:', Object.keys(data.property));
+        console.log('📦 Full property data:', data.property);
+        
+        // Include content_type and page_type info in the property
         const propertyWithContentType = {
           ...data.property,
           content_type: data.content_type,
           content_type_confidence: data.content_type_confidence,
-          content_type_detection_method: data.content_type_detection_method
+          content_type_detection_method: data.content_type_detection_method,
+          page_type: data.page_type,
+          page_type_confidence: data.page_type_confidence,
+          page_type_detection_method: data.page_type_detection_method
         };
+        
+        console.log('🎯 Final property with types:', propertyWithContentType);
         setExtractedProperty(propertyWithContentType);
         setConfidence(data.extraction_confidence || 0.9);
         setShowResults(true);
@@ -429,7 +437,10 @@ function App() {
             ...data.property,
             content_type: data.content_type,
             content_type_confidence: data.content_type_confidence,
-            content_type_detection_method: data.content_type_detection_method
+            content_type_detection_method: data.content_type_detection_method,
+            page_type: data.page_type,
+            page_type_confidence: data.page_type_confidence,
+            page_type_detection_method: data.page_type_detection_method
           };
           setExtractedProperty(propertyWithContentType);
           setConfidence(data.extraction_confidence || 0.9);
@@ -518,9 +529,9 @@ function App() {
   )
 
   return (
-    <div className="bg-gray-50 flex">
+    <div className="bg-gray-50 flex h-screen overflow-hidden">
       {/* Left Sidebar - Permanent */}
-      <div className="w-80 bg-white shadow-xl flex flex-col h-screen sticky top-0">
+      <div className="w-80 bg-white shadow-xl flex flex-col h-full flex-shrink-0">
         <div className="p-4 border-b">
           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -604,8 +615,8 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto px-6 py-8">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="w-full px-8 py-8 pb-16 min-h-full">
           {/* Header */}
           <header className="mb-8">
             <div className="flex items-center justify-between">
@@ -888,7 +899,7 @@ function App() {
                     </div>
                   )}
                   
-                  {/* Content Type Badge - NEW */}
+                  {/* Content Type Badge */}
                   {(extractedProperty as any).content_type && (
                     <div className="flex items-center gap-2">
                       <span className="text-gray-600">Type:</span>
@@ -898,30 +909,167 @@ function App() {
                       </span>
                     </div>
                   )}
+                  
+                  {/* Page Type Badge - NEW */}
+                  {(extractedProperty as any).page_type && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Página:</span>
+                      <span className={`px-3 py-1 rounded-full font-medium ${
+                        (extractedProperty as any).page_type === 'specific' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {(extractedProperty as any).page_type === 'specific' ? '📄 Específica' : '📚 General'}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Detection Confidence Badge */}
+                  {(extractedProperty as any).page_type_confidence && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Confianza:</span>
+                      <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full font-medium text-xs">
+                        {Math.round((extractedProperty as any).page_type_confidence * 100)}%
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Property Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {[
-                    { label: t.dataCollector.propertyName, value: extractedProperty.title || extractedProperty.property_name },
-                    { label: t.dataCollector.listingId, value: extractedProperty.listing_id },
-                    { label: t.dataCollector.listingStatus, value: extractedProperty.listing_status || extractedProperty.listing_type },
-                    { label: t.dataCollector.price, value: extractedProperty.price_usd ? `$${parseFloat(String(extractedProperty.price_usd)).toLocaleString()}` : t.common.na },
-                    { label: t.dataCollector.type, value: extractedProperty.property_type_display || extractedProperty.property_type },
-                    { 
-                      label: t.dataCollector.location, 
-                      value: extractedProperty.location || extractedProperty.address || (extractedProperty.city && extractedProperty.province ? `${extractedProperty.city}, ${extractedProperty.province}` : null),
-                      isLocation: true,
-                      lat: extractedProperty.latitude,
-                      lng: extractedProperty.longitude
-                    },
-                    { label: t.dataCollector.bedrooms, value: extractedProperty.bedrooms },
-                    { label: t.dataCollector.bathrooms, value: extractedProperty.bathrooms },
-                    { label: t.dataCollector.squareMeters, value: extractedProperty.area_m2 || extractedProperty.square_meters },
-                    { label: t.dataCollector.lotSize, value: extractedProperty.lot_size_m2 },
-                    { label: t.dataCollector.dateListed, value: extractedProperty.date_listed },
-                    { label: t.dataCollector.status, value: extractedProperty.status_display || extractedProperty.status },
-                  ].map((field, index) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {(() => {
+                    const contentType = extractedProperty.content_type || 'real_estate';
+                    const pageType = (extractedProperty as any).page_type || 'specific';
+                    
+                    // GENERAL PAGE TEMPLATES
+                    if (pageType === 'general') {
+                      // Tour Guide Page
+                      if (contentType === 'tour') {
+                        const tourTypes = (extractedProperty as any).tour_types_available || (extractedProperty as any).tour_types || [];
+                        const priceRange = (extractedProperty as any).price_range 
+                          ? `$${(extractedProperty as any).price_range.min_usd || 'N/A'} - $${(extractedProperty as any).price_range.max_usd || 'N/A'}`
+                          : (extractedProperty as any).typical_price_range;
+                        const featuredCount = (extractedProperty as any).featured_tours?.length || (extractedProperty as any).total_tours_mentioned || (extractedProperty as any).featured_items_count;
+                        
+                        return [
+                          { label: 'Destino', value: (extractedProperty as any).destination },
+                          { label: 'Ubicación', value: extractedProperty.location },
+                          { label: 'Tipos de Tours', value: Array.isArray(tourTypes) && tourTypes.length > 0 ? tourTypes.join(', ') : t.common.na },
+                          { label: 'Rango de Precios', value: priceRange },
+                          { label: 'Mejor Temporada', value: (extractedProperty as any).best_season },
+                          { label: 'Tours Destacados', value: featuredCount ? `${featuredCount} tours` : t.common.na },
+                        ];
+                      }
+                      // Restaurant Guide Page
+                      else if (contentType === 'restaurant') {
+                        return [
+                          { label: 'Destino', value: (extractedProperty as any).destination },
+                          { label: 'Ubicación', value: extractedProperty.location },
+                          { label: 'Tipos de Cocina', value: (extractedProperty as any).cuisine_types ? (extractedProperty as any).cuisine_types.join(', ') : t.common.na },
+                          { label: 'Rango de Precios', value: (extractedProperty as any).typical_price_range },
+                          { label: 'Restaurantes Destacados', value: (extractedProperty as any).featured_items_count ? `${(extractedProperty as any).featured_items_count} restaurantes` : t.common.na },
+                        ];
+                      }
+                      // Real Estate Guide Page
+                      else if (contentType === 'real_estate') {
+                        return [
+                          { label: 'Destino', value: (extractedProperty as any).destination },
+                          { label: 'Ubicación', value: extractedProperty.location },
+                          { label: 'Tipos de Propiedades', value: (extractedProperty as any).property_types ? (extractedProperty as any).property_types.join(', ') : t.common.na },
+                          { label: 'Rango de Precios', value: (extractedProperty as any).typical_price_range },
+                          { label: 'Propiedades Destacadas', value: (extractedProperty as any).featured_items_count ? `${(extractedProperty as any).featured_items_count} propiedades` : t.common.na },
+                        ];
+                      }
+                      // Default General Page
+                      return [
+                        { label: 'Destino', value: (extractedProperty as any).destination },
+                        { label: 'Ubicación', value: extractedProperty.location },
+                        { label: 'Elementos Destacados', value: (extractedProperty as any).featured_items_count || t.common.na },
+                      ];
+                    }
+                    
+                    // SPECIFIC PAGE TEMPLATES
+                    // Define fields based on content type
+                    if (contentType === 'tour') {
+                      return [
+                        { label: 'Nombre del Tour', value: extractedProperty.tour_name || extractedProperty.title },
+                        { label: 'Tipo de Tour', value: extractedProperty.tour_type },
+                        { label: 'Precio (USD)', value: extractedProperty.price_usd ? `$${parseFloat(String(extractedProperty.price_usd)).toLocaleString()}` : t.common.na },
+                        { label: 'Duración', value: extractedProperty.duration_hours ? `${extractedProperty.duration_hours} horas` : t.common.na },
+                        { label: 'Dificultad', value: extractedProperty.difficulty_level },
+                        { label: 'Ubicación', value: extractedProperty.location },
+                        { label: 'Edad Mínima', value: extractedProperty.minimum_age ? `${extractedProperty.minimum_age} años` : t.common.na },
+                        { label: 'Máx. Participantes', value: extractedProperty.max_participants },
+                        { label: 'Pickup Incluido', value: extractedProperty.pickup_included === true ? 'Sí' : extractedProperty.pickup_included === false ? 'No' : t.common.na },
+                        { label: 'Idiomas', value: extractedProperty.languages_available ? extractedProperty.languages_available.join(', ') : t.common.na },
+                        { label: 'Qué Incluye', value: extractedProperty.included_items ? extractedProperty.included_items.join(', ') : t.common.na },
+                        { label: 'Cancelación', value: extractedProperty.cancellation_policy },
+                      ];
+                    } else if (contentType === 'restaurant') {
+                      return [
+                        { label: 'Nombre', value: extractedProperty.restaurant_name || extractedProperty.title },
+                        { label: 'Tipo de Cocina', value: extractedProperty.cuisine_type },
+                        { label: 'Rango de Precio', value: extractedProperty.price_range },
+                        { label: 'Precio Promedio', value: extractedProperty.average_price_per_person ? `$${extractedProperty.average_price_per_person}` : t.common.na },
+                        { label: 'Ubicación', value: extractedProperty.location },
+                        { label: 'Horario', value: extractedProperty.hours_of_operation },
+                        { label: 'Ambiente', value: extractedProperty.atmosphere },
+                        { label: 'Reservas', value: extractedProperty.reservations_required === true ? 'Requeridas' : extractedProperty.reservations_required === false ? 'No requeridas' : t.common.na },
+                        { label: 'Platillos Destacados', value: extractedProperty.signature_dishes ? extractedProperty.signature_dishes.join(', ') : t.common.na },
+                        { label: 'Opciones Dietéticas', value: extractedProperty.dietary_options ? extractedProperty.dietary_options.join(', ') : t.common.na },
+                        { label: 'Código de Vestimenta', value: extractedProperty.dress_code },
+                        { label: 'Teléfono', value: extractedProperty.contact_phone },
+                      ];
+                    } else if (contentType === 'transportation') {
+                      return [
+                        { label: 'Nombre', value: extractedProperty.transport_name || extractedProperty.title },
+                        { label: 'Tipo', value: extractedProperty.transport_type },
+                        { label: 'Ruta', value: extractedProperty.route },
+                        { label: 'Precio (USD)', value: extractedProperty.price_usd ? `$${parseFloat(String(extractedProperty.price_usd)).toLocaleString()}` : t.common.na },
+                        { label: 'Duración', value: extractedProperty.duration_hours ? `${extractedProperty.duration_hours} horas` : t.common.na },
+                        { label: 'Horario', value: extractedProperty.schedule },
+                        { label: 'Frecuencia', value: extractedProperty.frequency },
+                        { label: 'Punto de Recogida', value: extractedProperty.pickup_location },
+                        { label: 'Punto de Entrega', value: extractedProperty.dropoff_location },
+                        { label: 'Reserva', value: extractedProperty.booking_required === true ? 'Requerida' : extractedProperty.booking_required === false ? 'No requerida' : t.common.na },
+                        { label: 'Equipaje', value: extractedProperty.luggage_allowance },
+                        { label: 'Teléfono', value: extractedProperty.contact_phone },
+                      ];
+                    } else if (contentType === 'local_tips') {
+                      return [
+                        { label: 'Título', value: extractedProperty.tip_title || extractedProperty.title },
+                        { label: 'Categoría', value: extractedProperty.category },
+                        { label: 'Ubicación', value: extractedProperty.location },
+                        { label: 'Costo Estimado', value: extractedProperty.cost_estimate },
+                        { label: 'Mejor Época', value: extractedProperty.best_time },
+                        { label: 'Consejos Prácticos', value: extractedProperty.practical_advice ? extractedProperty.practical_advice.join(', ') : t.common.na },
+                        { label: 'Qué Evitar', value: extractedProperty.things_to_avoid ? extractedProperty.things_to_avoid.join(', ') : t.common.na },
+                        { label: 'Costumbres Locales', value: extractedProperty.local_customs ? extractedProperty.local_customs.join(', ') : t.common.na },
+                      ];
+                    } else {
+                      // Default: real_estate
+                      return [
+                        { label: t.dataCollector.propertyName, value: extractedProperty.title || extractedProperty.property_name },
+                        { label: t.dataCollector.listingId, value: extractedProperty.listing_id },
+                        { label: t.dataCollector.listingStatus, value: extractedProperty.listing_status || extractedProperty.listing_type },
+                        { label: t.dataCollector.price, value: extractedProperty.price_usd ? `$${parseFloat(String(extractedProperty.price_usd)).toLocaleString()}` : t.common.na },
+                        { label: t.dataCollector.type, value: extractedProperty.property_type_display || extractedProperty.property_type },
+                        { 
+                          label: t.dataCollector.location, 
+                          value: extractedProperty.location || extractedProperty.address || (extractedProperty.city && extractedProperty.province ? `${extractedProperty.city}, ${extractedProperty.province}` : null),
+                          isLocation: true,
+                          lat: extractedProperty.latitude,
+                          lng: extractedProperty.longitude
+                        },
+                        { label: t.dataCollector.bedrooms, value: extractedProperty.bedrooms },
+                        { label: t.dataCollector.bathrooms, value: extractedProperty.bathrooms },
+                        { label: t.dataCollector.squareMeters, value: extractedProperty.area_m2 || extractedProperty.square_meters },
+                        { label: t.dataCollector.lotSize, value: extractedProperty.lot_size_m2 },
+                        { label: t.dataCollector.dateListed, value: extractedProperty.date_listed },
+                        { label: t.dataCollector.status, value: extractedProperty.status_display || extractedProperty.status },
+                      ];
+                    }
+                  })().map((field, index) => {
                     const displayValue = field.value || t.common.na
                     
                     if ('isLocation' in field && field.isLocation && field.lat && field.lng) {
@@ -949,6 +1097,198 @@ function App() {
                     )
                   })}
                 </div>
+
+                {/* Overview Section - Only for General Pages */}
+                {(extractedProperty as any).page_type === 'general' && (extractedProperty as any).overview && (
+                  <div className="mb-6 bg-gradient-to-br from-purple-50 to-indigo-50 border-l-4 border-purple-500 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                      📚 Resumen General
+                    </h3>
+                    <p className="text-gray-700 leading-relaxed">
+                      {(extractedProperty as any).overview}
+                    </p>
+                  </div>
+                )}
+
+                {/* Tips Section - Only for General Pages */}
+                {(extractedProperty as any).page_type === 'general' && (extractedProperty as any).tips && (extractedProperty as any).tips.length > 0 && (
+                  <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-yellow-900 mb-3 flex items-center gap-2">
+                      💡 Consejos y Recomendaciones
+                    </h3>
+                    <ul className="space-y-2">
+                      {(extractedProperty as any).tips.map((tip: string, index: number) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <span className="text-yellow-600 mt-1">•</span>
+                          <span className="text-gray-700">{tip}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Featured Items Section - Only for General Pages */}
+                {(extractedProperty as any).page_type === 'general' && (
+                  (() => {
+                    // Check multiple possible field names for featured items
+                    const featuredItems = (extractedProperty as any).featured_items 
+                      || (extractedProperty as any).featured_tours 
+                      || [];
+                    
+                    if (!Array.isArray(featuredItems) || featuredItems.length === 0) {
+                      return null;
+                    }
+                    
+                    return (
+                      <div className="mb-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          ⭐ Elementos Destacados
+                          <span className="text-sm font-normal text-gray-500">
+                            ({featuredItems.length} items)
+                          </span>
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                          {featuredItems.map((item: any, index: number) => (
+                            <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow bg-white">
+                              <h4 className="font-semibold text-gray-800 mb-2 truncate" title={item.name || item.title}>
+                                {item.name || item.title || `Item ${index + 1}`}
+                              </h4>
+                              {(item.price || item.price_usd) && (
+                                <p className="text-sm text-green-600 font-medium mb-1">
+                                  {item.price || `$${item.price_usd}`}
+                                </p>
+                              )}
+                              {item.rating && (
+                                <p className="text-sm text-yellow-600 mb-2">
+                                  ⭐ {item.rating}
+                                </p>
+                              )}
+                              {(item.url || item.source_url) && (
+                                <a 
+                                  href={item.url || item.source_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                  </svg>
+                                  Ver detalle
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
+
+                {/* Regions Section - Only for General Tour/Real Estate Pages */}
+                {(extractedProperty as any).page_type === 'general' && (extractedProperty as any).regions && (extractedProperty as any).regions.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      🗺️ Regiones y Destinos
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {(extractedProperty as any).regions.map((region: any, index: number) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-cyan-50">
+                          <h4 className="font-semibold text-blue-900 mb-2">
+                            {region.name}
+                          </h4>
+                          {region.description && (
+                            <p className="text-sm text-gray-700 mb-3">
+                              {region.description}
+                            </p>
+                          )}
+                          {region.popular_activities && region.popular_activities.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-xs font-medium text-gray-600 mb-1">Actividades populares:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {region.popular_activities.map((activity: string, idx: number) => (
+                                  <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                    {activity}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Seasonal Activities - Only for General Pages */}
+                {(extractedProperty as any).page_type === 'general' && (extractedProperty as any).seasonal_activities && (extractedProperty as any).seasonal_activities.length > 0 && (
+                  <div className="mb-6 bg-gradient-to-br from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-green-900 mb-4 flex items-center gap-2">
+                      📅 Actividades por Temporada
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {(extractedProperty as any).seasonal_activities.map((season: any, index: number) => (
+                        <div key={index} className="bg-white rounded-lg p-4 border border-green-200">
+                          <h4 className="font-semibold text-green-800 mb-2">
+                            {season.season}
+                          </h4>
+                          {season.why_this_season && (
+                            <p className="text-sm text-gray-600 mb-2 italic">
+                              {season.why_this_season}
+                            </p>
+                          )}
+                          {season.recommended_activities && season.recommended_activities.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {season.recommended_activities.map((activity: string, idx: number) => (
+                                <span key={idx} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                  {activity}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* FAQs Section - Only for General Pages */}
+                {(extractedProperty as any).page_type === 'general' && (extractedProperty as any).faqs && (extractedProperty as any).faqs.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      ❓ Preguntas Frecuentes
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(extractedProperty as any).faqs.map((faq: any, index: number) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+                          <h4 className="font-semibold text-gray-800 mb-2 flex items-start gap-2">
+                            <span className="text-indigo-600 flex-shrink-0">Q:</span>
+                            <span>{faq.question}</span>
+                          </h4>
+                          <p className="text-sm text-gray-700 ml-5">
+                            <span className="font-medium text-indigo-600">A:</span> {faq.answer}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* What to Pack - Only for General Pages */}
+                {(extractedProperty as any).page_type === 'general' && (extractedProperty as any).what_to_pack && (extractedProperty as any).what_to_pack.length > 0 && (
+                  <div className="mb-6 bg-orange-50 border-l-4 border-orange-500 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-orange-900 mb-3 flex items-center gap-2 flex-wrap">
+                      <span>🎒 Qué Llevar</span>
+                    </h3>
+                    <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                      {(extractedProperty as any).what_to_pack.map((item: string, index: number) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <span className="text-orange-600">✓</span>
+                          <span className="text-gray-700">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* Description */}
                 {extractedProperty.description && (

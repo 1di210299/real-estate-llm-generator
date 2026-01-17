@@ -28,12 +28,13 @@ class PropertyExtractor:
     Supports multiple content types: real_estate, tour, restaurant, local_tips, transportation.
     """
     
-    def __init__(self, content_type: str = 'real_estate'):
+    def __init__(self, content_type: str = 'real_estate', page_type: str = 'specific'):
         """
         Initialize extractor.
         
         Args:
             content_type: Type of content to extract (real_estate, tour, restaurant, etc.)
+            page_type: Type of page ('specific' for single item, 'general' for guides/listings)
         """
         api_key = settings.OPENAI_API_KEY
         logger.info(f"🔑 OPENAI_API_KEY configured: {'Yes' if api_key else 'No'}")
@@ -49,13 +50,19 @@ class PropertyExtractor:
             logger.warning(f"⚠️ Unknown content type: {content_type}, defaulting to real_estate")
             content_type = 'real_estate'
         
+        # Validate page type
+        if page_type not in ['specific', 'general']:
+            logger.warning(f"⚠️ Unknown page type: {page_type}, defaulting to specific")
+            page_type = 'specific'
+        
         self.content_type = content_type
+        self.page_type = page_type
         self.client = openai.OpenAI(api_key=api_key)
         self.model = settings.OPENAI_MODEL_CHAT
         self.max_tokens = settings.OPENAI_MAX_TOKENS
         self.temperature = 0.1  # Low temperature for consistent extraction
         
-        logger.info(f"📝 Extractor initialized for content type: {content_type}")
+        logger.info(f"📝 Extractor initialized for content type: {content_type}, page type: {page_type}")
     
     def _clean_content(self, content: str) -> str:
         """Clean and truncate content for LLM processing."""
@@ -121,9 +128,31 @@ class PropertyExtractor:
         return combined
     
     def _validate_extraction(self, data: Dict) -> Dict:
-        """Validate and clean extracted data."""
+        """Validate and clean extracted data based on page type."""
         validated = {}
         
+        # For GENERAL pages, preserve guide fields without strict validation
+        if self.page_type == 'general':
+            # Copy all guide-specific fields directly
+            guide_fields = [
+                'page_type', 'destination', 'overview', 
+                'property_types_available', 'tour_types_available',
+                'price_range', 'popular_areas', 'market_trends',
+                'featured_properties', 'featured_tours', 'featured_items_count',
+                'total_properties_mentioned', 'total_tours_mentioned',
+                'investment_tips', 'booking_tips', 'legal_considerations',
+                'best_season', 'best_time_of_day', 'duration_range',
+                'tips', 'things_to_bring', 'cuisine_types',
+                # NEW: Extended tour guide fields
+                'regions', 'seasonal_activities', 'faqs', 'what_to_pack',
+                'family_friendly', 'accessibility_info'
+            ]
+            
+            for field in guide_fields:
+                if field in data:
+                    validated[field] = data[field]
+        
+        # For SPECIFIC pages OR common fields, validate property fields
         # Handle price
         if data.get('price_usd'):
             try:
@@ -203,8 +232,8 @@ class PropertyExtractor:
         # Clean content
         content = self._clean_content(html)
         
-        # Get the appropriate prompt for this content type
-        extraction_prompt_template = get_extraction_prompt(self.content_type)
+        # Get the appropriate prompt for this content type and page type
+        extraction_prompt_template = get_extraction_prompt(self.content_type, self.page_type)
         prompt = extraction_prompt_template.format(content=content)
         
         logger.info(f"Prompt preview (first 800 chars): {prompt[:800]}")
@@ -246,6 +275,8 @@ class PropertyExtractor:
             validated_data['source_url'] = url
             validated_data['raw_html'] = html[:10000]  # Store first 10K chars
             validated_data['tokens_used'] = response.usage.total_tokens
+            validated_data['content_type'] = self.content_type
+            validated_data['page_type'] = self.page_type
             
             logger.info(f"Extraction successful. Confidence: {validated_data['extraction_confidence']}")
             
@@ -315,24 +346,28 @@ def extract_property_data(content: str, url: Optional[str] = None) -> Dict:
     return extractor.extract_from_html(content, url=url)
 
 
-def extract_content_data(content: str, content_type: str, url: Optional[str] = None) -> Dict:
+def extract_content_data(content: str, content_type: str, page_type: str = 'specific', url: Optional[str] = None) -> Dict:
     """
     Generic function to extract data for any content type.
     
     Args:
         content: HTML or text content to extract from
         content_type: Type of content (real_estate, tour, restaurant, local_tips, transportation)
+        page_type: Type of page ('specific' for single item details, 'general' for guides/listings)
         url: Optional source URL
         
     Returns:
-        Dictionary with extracted data (fields depend on content_type)
+        Dictionary with extracted data (fields depend on content_type and page_type)
         
     Usage:
-        # Extract tour data
-        data = extract_content_data(html, 'tour', url='https://viator.com/...')
+        # Extract specific tour data
+        data = extract_content_data(html, 'tour', 'specific', url='https://viator.com/tours/d742-12345')
+        
+        # Extract general tour guide
+        data = extract_content_data(html, 'tour', 'general', url='https://costarica.org/tours/')
         
         # Extract restaurant data  
-        data = extract_content_data(html, 'restaurant', url='https://yelp.com/...')
+        data = extract_content_data(html, 'restaurant', 'specific', url='https://yelp.com/biz/...')
     """
-    extractor = PropertyExtractor(content_type=content_type)
+    extractor = PropertyExtractor(content_type=content_type, page_type=page_type)
     return extractor.extract_from_html(content, url=url)

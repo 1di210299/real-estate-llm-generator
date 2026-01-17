@@ -1,0 +1,236 @@
+INFO 2026-01-16 16:16:35,273 scraper 🔧 Scraper initialized - Residential proxy: ❌ Not configured
+INFO 2026-01-16 16:16:35,273 scraper 🔍 [SCRAPE DECISION] Starting method selection for: https://skyadventures.travel/tickets/
+INFO 2026-01-16 16:16:35,273 scraper 🔍 [SCRAPFLY CHECK] Domain: skyadventures.travel
+INFO 2026-01-16 16:16:35,273 scraper 🔍 [SCRAPFLY CHECK] Enabled: True
+INFO 2026-01-16 16:16:35,273 scraper 🔍 [SCRAPFLY CHECK] Client available: False
+WARNING 2026-01-16 16:16:35,273 scraper ❌ [SCRAPFLY] Not available - enabled=True, client=False
+INFO 2026-01-16 16:16:35,273 scraper ✅ [DECISION] Trying httpx first (simple scraping): https://skyadventures.travel/tickets/
+INFO 2026-01-16 16:16:35,273 scraper Scraping with httpx: https://skyadventures.travel/tickets/
+INFO 2026-01-16 16:16:35,582 _client HTTP Request: GET https://skyadventures.travel/tickets/ "HTTP/1.1 200 OK"
+INFO 2026-01-16 16:16:35,594 content_detection ================================================================================
+INFO 2026-01-16 16:16:35,594 content_detection 🔎 Starting hybrid content type detection
+INFO 2026-01-16 16:16:35,594 content_detection ================================================================================
+INFO 2026-01-16 16:16:35,594 content_detection 🔍 Detecting by domain: skyadventures.travel
+INFO 2026-01-16 16:16:35,594 content_detection ⚠️ No domain match for: skyadventures.travel
+INFO 2026-01-16 16:16:35,606 content_detection 🔍 Detecting by keywords (text length: 3079 chars)
+DEBUG 2026-01-16 16:16:35,607 content_detection   real_estate: 0/25 keywords (0.00%)
+DEBUG 2026-01-16 16:16:35,607 content_detection   tour: 3/20 keywords (15.00%)
+DEBUG 2026-01-16 16:16:35,607 content_detection   restaurant: 0/20 keywords (0.00%)
+DEBUG 2026-01-16 16:16:35,607 content_detection   local_tips: 2/19 keywords (10.53%)
+DEBUG 2026-01-16 16:16:35,607 content_detection   transportation: 1/22 keywords (4.55%)
+INFO 2026-01-16 16:16:35,607 content_detection 🏆 Best keyword match: tour (3 keywords, 15.00% confidence)
+INFO 2026-01-16 16:16:35,607 content_detection ⚠️ Keyword confidence below threshold (30.00%)
+WARNING 2026-01-16 16:16:35,607 content_detection ⚠️ No detection method succeeded, defaulting to real_estate
+INFO 2026-01-16 16:16:35,607 page_type_detection ================================================================================
+INFO 2026-01-16 16:16:35,607 page_type_detection 🔍 Starting cascading page type detection
+INFO 2026-01-16 16:16:35,607 page_type_detection    URL: https://skyadventures.travel/tickets/
+INFO 2026-01-16 16:16:35,607 page_type_detection    Content type: real_estate
+INFO 2026-01-16 16:16:35,607 page_type_detection ================================================================================
+INFO 2026-01-16 16:16:35,607 page_type_detection 📍 LEVEL 1: Analyzing URL patterns...
+INFO 2026-01-16 16:16:35,607 page_type_detection 
+------------------------------------------------------------
+INFO 2026-01-16 16:16:35,607 page_type_detection 🔍 URL PATTERN ANALYSIS
+INFO 2026-01-16 16:16:35,607 page_type_detection ------------------------------------------------------------
+INFO 2026-01-16 16:16:35,607 page_type_detection Domain: skyadventures.travel
+INFO 2026-01-16 16:16:35,608 page_type_detection Path: /tickets/
+INFO 2026-01-16 16:16:35,608 page_type_detection 
+🔎 Checking for SPECIFIC page indicators...
+INFO 2026-01-16 16:16:35,608 page_type_detection    ❌ No Viator ID (d742-XXX)
+INFO 2026-01-16 16:16:35,608 page_type_detection    ❌ No GetYourGuide ID (tXXXX)
+INFO 2026-01-16 16:16:35,608 page_type_detection    ❌ No 5+ digit ID
+INFO 2026-01-16 16:16:35,608 page_type_detection    ❌ No listing-ID pattern
+INFO 2026-01-16 16:16:35,608 page_type_detection 
+📏 Path depth: 1 levels
+INFO 2026-01-16 16:16:35,608 page_type_detection    ❌ Shallow path (1 < 4)
+INFO 2026-01-16 16:16:35,608 page_type_detection 
+🔎 Checking for GENERAL page indicators...
+INFO 2026-01-16 16:16:35,608 page_type_detection    ❌ Doesn't end in plural
+INFO 2026-01-16 16:16:35,608 page_type_detection    ❌ Not a category page
+INFO 2026-01-16 16:16:35,608 page_type_detection    ❌ No search/browse pattern
+INFO 2026-01-16 16:16:35,608 page_type_detection    Result: specific
+INFO 2026-01-16 16:16:35,609 page_type_detection    Confidence: 50%
+INFO 2026-01-16 16:16:35,609 page_type_detection    Reason: URL pattern inconclusive, defaulting to specific
+INFO 2026-01-16 16:16:35,609 page_type_detection ⚠️ LOW/MEDIUM confidence from URL - CONTINUING TO LEVEL 2...
+INFO 2026-01-16 16:16:35,609 page_type_detection 
+INFO 2026-01-16 16:16:35,609 page_type_detection 📊 LEVEL 2: Analyzing HTML preview with LLM...
+INFO 2026-01-16 16:16:35,609 page_type_detection \n------------------------------------------------------------
+INFO 2026-01-16 16:16:35,609 page_type_detection 📊 HTML STRUCTURE ANALYSIS
+INFO 2026-01-16 16:16:35,609 page_type_detection ------------------------------------------------------------
+INFO 2026-01-16 16:16:35,616 page_type_detection HTML size: 120,434 characters
+INFO 2026-01-16 16:16:35,616 page_type_detection Content type: real_estate
+INFO 2026-01-16 16:16:35,616 page_type_detection \n🔢 Counting item cards...
+INFO 2026-01-16 16:16:35,620 page_type_detection    Found: 20 cards
+INFO 2026-01-16 16:16:35,620 page_type_detection    ✅ GENERAL indicator: 20 cards (score +3)
+INFO 2026-01-16 16:16:35,620 page_type_detection 
+💳 Checking booking elements...
+INFO 2026-01-16 16:16:35,620 page_type_detection    Found: 2 booking keywords
+INFO 2026-01-16 16:16:35,620 page_type_detection    ✅ SPECIFIC indicator: Multiple booking elements (score +3)
+INFO 2026-01-16 16:16:35,620 page_type_detection 
+🔍 Checking filter/navigation elements...
+INFO 2026-01-16 16:16:35,620 page_type_detection    Found: 0 filter keywords
+INFO 2026-01-16 16:16:35,620 page_type_detection    ❌ Not enough filter elements
+INFO 2026-01-16 16:16:35,620 page_type_detection 
+📊 Checking pagination...
+INFO 2026-01-16 16:16:35,620 page_type_detection    Found: 1 pagination keywords
+INFO 2026-01-16 16:16:35,620 page_type_detection    ❌ No pagination detected
+INFO 2026-01-16 16:16:35,620 page_type_detection \n🎯 FINAL SCORING:
+INFO 2026-01-16 16:16:35,620 page_type_detection    SPECIFIC score: 3
+INFO 2026-01-16 16:16:35,620 page_type_detection    GENERAL score: 3
+INFO 2026-01-16 16:16:35,620 page_type_detection    Indicators: ['Found 20 item cards', 'Found 2 booking elements']
+INFO 2026-01-16 16:16:35,620 page_type_detection    ⚖️ TIE (score: 3 == 3)
+INFO 2026-01-16 16:16:35,621 page_type_detection    ✅ TIEBREAKER: GENERAL (20 cards is strong listing indicator)
+INFO 2026-01-16 16:16:35,621 page_type_detection    Final confidence: 60% (tie broken by card count)
+INFO 2026-01-16 16:16:35,621 page_type_detection ------------------------------------------------------------
+INFO 2026-01-16 16:16:35,621 page_type_detection    Result: general
+INFO 2026-01-16 16:16:35,621 page_type_detection    Confidence: 60%
+INFO 2026-01-16 16:16:35,621 page_type_detection    Reason: Tie broken by 20 cards (listing indicator)
+INFO 2026-01-16 16:16:35,621 page_type_detection 
+INFO 2026-01-16 16:16:35,621 page_type_detection 🔀 COMBINING SIGNALS:
+INFO 2026-01-16 16:16:35,621 page_type_detection    URL says: specific (50%)
+INFO 2026-01-16 16:16:35,621 page_type_detection    HTML says: general (60%)
+INFO 2026-01-16 16:16:35,621 page_type_detection    ⚠️ HTML signal stronger than URL → Using HTML: general
+INFO 2026-01-16 16:16:35,621 page_type_detection    Final confidence: 60%
+INFO 2026-01-16 16:16:35,621 page_type_detection 
+INFO 2026-01-16 16:16:35,621 page_type_detection ⚠️ LOW CONFIDENCE (60%) - ESCALATING TO LEVEL 3...
+INFO 2026-01-16 16:16:35,621 page_type_detection 
+INFO 2026-01-16 16:16:35,621 page_type_detection 
+============================================================
+INFO 2026-01-16 16:16:35,621 page_type_detection 🤖 LEVEL 3: OpenAI Analysis
+INFO 2026-01-16 16:16:35,621 page_type_detection ============================================================
+INFO 2026-01-16 16:16:35,621 page_type_detection Analyzing 8,000 characters with OpenAI...
+INFO 2026-01-16 16:16:35,621 page_type_detection Content type: real_estate
+INFO 2026-01-16 16:16:39,691 _client HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO 2026-01-16 16:16:39,704 page_type_detection 
+✅ OpenAI Analysis Complete:
+INFO 2026-01-16 16:16:39,704 page_type_detection    Page Type: general
+INFO 2026-01-16 16:16:39,704 page_type_detection    Confidence: 85%
+INFO 2026-01-16 16:16:39,704 page_type_detection    Reasoning: The page appears to be a listing or guide page for booking experiences in Costa Rica, likely featuring multiple options rather than a single specific item.
+INFO 2026-01-16 16:16:39,704 page_type_detection    Key Indicators: multiple experiences available, no detailed descriptions for a single item, likely includes a booking interface for various options
+INFO 2026-01-16 16:16:39,705 page_type_detection    Time: 4.08s
+INFO 2026-01-16 16:16:39,705 page_type_detection    Cost: $0.0048
+INFO 2026-01-16 16:16:39,705 page_type_detection    Tokens: 3168
+INFO 2026-01-16 16:16:39,705 page_type_detection ============================================================
+INFO 2026-01-16 16:16:39,705 page_type_detection ✅ OpenAI AGREES with Level 2 → general
+INFO 2026-01-16 16:16:39,705 extraction 🔑 OPENAI_API_KEY configured: Yes
+INFO 2026-01-16 16:16:39,705 extraction 🔑 API Key length: 164 chars
+INFO 2026-01-16 16:16:39,705 extraction 🔑 API Key preview: sk-proj-ex...
+INFO 2026-01-16 16:16:39,711 extraction 📝 Extractor initialized for content type: real_estate, page type: general
+INFO 2026-01-16 16:16:39,726 extraction Prompt preview (first 800 chars): You are a real estate market guide extraction specialist. This appears to be a GENERAL GUIDE page (not a single property), so extract overview information about the real estate market.
+
+**Instructions:**
+1. Extract general information about the real estate market and available properties
+2. DO NOT try to extract details of a single property (this is a guide/listing page)
+3. Focus on: destination, market overview, property types, price ranges, popular areas
+4. Use null for any field not found in the source
+
+**Required Output Format:**
+```json
+{
+  "page_type": "general_guide",
+  "destination": "string (e.g., 'Costa Rica Real Estate', 'Guanacaste Properties')",
+  "destination_evidence": "exact quote",
+  "overview": "string (general description of the real estate market)",
+  "overview_evidence
+INFO 2026-01-16 16:16:39,726 extraction Prompt preview (last 800 chars): entures","description":"Save your spots for the best experiences in Costa Rica. Sky Adventures offers unique experiences at incredible destinations, Monteverde and Arenal. Book adventures to enjoy our forests such as zip lining, nature challenge course, hanging bridges, aerial tram over the forest, tree climbing and more.","inLanguage":"en-US","isPartOf":{"@id":"https://skyadventures.travel/#/schema/WebSite"},"breadcrumb":{"@type":"BreadcrumbList","@id":"https://skyadventures.travel/#/schema/BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://skyadventures.travel/","name":"Sky Adventures"},{"@type":"ListItem","position":2,"name":"Book Costa Rica Best Experiences"}]},"potentialAction":{"@type":"ReadAction","target":"https://skyadventures.travel/tickets/"}}]}
+
+INFO 2026-01-16 16:16:39,726 extraction Starting LLM property extraction...
+INFO 2026-01-16 16:16:46,252 _client HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO 2026-01-16 16:16:46,255 extraction LLM extraction completed. Tokens used: 1319
+INFO 2026-01-16 16:16:46,255 extraction Raw LLM response: {
+  "page_type": "general_guide",
+  "destination": "Costa Rica Real Estate",
+  "destination_evidence": "null",
+  "overview": "null",
+  "overview_evidence": "null",
+  "property_types_available": null,
+  "types_evidence": "null",
+  "price_range": {
+    "min_usd": null,
+    "max_usd": null,
+    "typical_usd": null
+  },
+  "price_range_evidence": "null",
+  "popular_areas": null,
+  "areas_evidence": "null",
+  "market_trends": null,
+  "trends_evidence": "null",
+  "featured_properties": null,
+  "feature
+INFO 2026-01-16 16:16:46,255 extraction Parsed JSON keys: ['page_type', 'destination', 'destination_evidence', 'overview', 'overview_evidence', 'property_types_available', 'types_evidence', 'price_range', 'price_range_evidence', 'popular_areas', 'areas_evidence', 'market_trends', 'trends_evidence', 'featured_properties', 'featured_evidence', 'total_properties_mentioned', 'total_evidence', 'investment_tips', 'tips_evidence', 'legal_considerations', 'legal_evidence', 'featured_items_count', 'extraction_confidence', 'confidence_reasoning']
+INFO 2026-01-16 16:16:46,256 extraction Extraction successful. Confidence: 0.0
+INFO 2026-01-16 16:16:46,256 extraction 🔑 OPENAI_API_KEY configured: Yes
+INFO 2026-01-16 16:16:46,256 extraction 🔑 API Key length: 164 chars
+INFO 2026-01-16 16:16:46,256 extraction 🔑 API Key preview: sk-proj-ex...
+INFO 2026-01-16 16:16:46,266 extraction 📝 Extractor initialized for content type: real_estate, page type: general
+================================================================================
+🔍 DEBUG EXTRACTION: https://skyadventures.travel/tickets/
+================================================================================
+
+📥 STEP 1: Scraping...
+   ✅ HTML size: 120434 chars
+
+🎯 STEP 2: Detecting content type...
+   ✅ Content type: real_estate
+   ✅ Confidence: 30.00%
+   ✅ Method: default_fallback
+
+📄 STEP 3: Detecting page type...
+   ✅ Page type: general
+   ✅ Confidence: 85.00%
+   ✅ Method: url_html_openai_agreed
+
+🤖 STEP 4: Extracting with LLM...
+   Parameters: content_type=real_estate, page_type=general
+
+📦 EXTRACTED DATA (after LLM):
+   Total keys: 17
+   Keys: ['property_name', 'property_type', 'location', 'description', 'listing_id', 'internal_property_id', 'listing_status', 'date_listed', 'amenities', 'extraction_confidence', 'field_confidence', 'extracted_at', 'source_url', 'raw_html', 'tokens_used', 'content_type', 'page_type']
+
+🔎 GUIDE FIELDS CHECK:
+   ❌ destination: NOT FOUND
+   ❌ overview: NOT FOUND
+   ❌ property_types_available: NOT FOUND
+   ❌ tour_types_available: NOT FOUND
+   ❌ price_range: NOT FOUND
+   ❌ featured_properties: NOT FOUND
+   ❌ featured_tours: NOT FOUND
+   ❌ market_trends: NOT FOUND
+
+🧹 STEP 5: Simulating evidence field removal...
+   Found 0 evidence fields to remove
+   After removal: 17 keys remain
+
+🔎 GUIDE FIELDS AFTER EVIDENCE REMOVAL:
+   ❌ destination: REMOVED
+   ❌ overview: REMOVED
+   ❌ property_types_available: REMOVED
+   ❌ tour_types_available: REMOVED
+   ❌ price_range: REMOVED
+   ❌ featured_properties: REMOVED
+   ❌ featured_tours: REMOVED
+   ❌ market_trends: REMOVED
+
+📊 SUMMARY:
+   Guide fields extracted: 0
+   Guide fields survived cleaning: 0
+   Loss: 0 fields
+
+🔬 STEP 6: Checking PropertyExtractor validation...
+   Extractor initialized: content_type=real_estate, page_type=general
+   ✅ Validation complete
+   Keys after validation: 12
+   Keys: ['property_name', 'property_type', 'location', 'description', 'listing_id', 'internal_property_id', 'listing_status', 'date_listed', 'amenities', 'extraction_confidence', 'field_confidence', 'extracted_at']
+
+🔎 GUIDE FIELDS AFTER VALIDATION:
+   ❌ destination: REMOVED BY VALIDATION
+   ❌ overview: REMOVED BY VALIDATION
+   ❌ property_types_available: REMOVED BY VALIDATION
+   ❌ tour_types_available: REMOVED BY VALIDATION
+   ❌ price_range: REMOVED BY VALIDATION
+   ❌ featured_properties: REMOVED BY VALIDATION
+   ❌ featured_tours: REMOVED BY VALIDATION
+   ❌ market_trends: REMOVED BY VALIDATION
+
+================================================================================
+🏁 DEBUG COMPLETE
+================================================================================

@@ -10,6 +10,9 @@ from typing import Dict, List, Any
 # EXTRACTION PROMPTS FOR EACH CONTENT TYPE
 # ============================================================================
 
+# TOUR PROMPTS (Specific vs General)
+# ----------------------------------------------------------------------------
+
 TOUR_EXTRACTION_PROMPT = """You are a tour and activity extraction specialist. Extract tour/activity information from the provided HTML or text and return it as JSON.
 
 **Instructions:**
@@ -51,6 +54,197 @@ TOUR_EXTRACTION_PROMPT = """You are a tour and activity extraction specialist. E
   "cancellation_evidence": "exact quote from source",
   "extraction_confidence": number (0.0 to 1.0),
   "confidence_reasoning": "brief explanation of confidence score"
+}}
+```
+
+**Content to extract from:**
+{content}
+"""
+
+
+TOUR_GUIDE_EXTRACTION_PROMPT = """Eres un especialista en extracción de información de guías de destinos turísticos. Esta página es una GUÍA GENERAL (no un tour individual), extrae información completa sobre tours y actividades en este destino.
+
+**INSTRUCCIONES CRÍTICAS - LEE CUIDADOSAMENTE:**
+1. ⚠️ EXTRAE SOLAMENTE TEXTO QUE ESTÉ LITERALMENTE ESCRITO EN LA FUENTE
+2. ⚠️ NO ASUMAS, NO INFERAS, NO INVENTES - si no ves el texto exacto, usa null
+3. ⚠️ Para consejos/qué llevar: SOLO si está EXPLÍCITAMENTE listado (ej: "bring binoculars", "pack water")
+4. ⚠️ NO agregues información "lógica" o "obvia" que no esté escrita
+5. TODO debe estar en ESPAÑOL - traduce si es necesario
+6. Para cada campo, incluye "evidence" con la cita EXACTA del texto fuente
+7. 🔥 IMPORTANTE: Para "overview" y "regions.description" - extrae PÁRRAFOS COMPLETOS Y DETALLADOS, no frases cortas. Combina toda la información descriptiva relevante en un texto largo y rico que el chatbot pueda usar para entender el destino completamente.
+
+**EJEMPLOS DE QUÉ NO HACER:**
+❌ "llevar binoculares" si solo dice "birdwatching" (eso es asumir)
+❌ "ropa cómoda" si no está específicamente mencionado
+❌ "temporada seca es mejor" si no lo dice explícitamente
+❌ Overview corto: "Un destino para observación de aves" (muy poco contexto)
+
+**EJEMPLOS DE QUÉ SÍ HACER:**
+✅ "observación de aves del Quetzal" si dice "Quetzal birdwatching"
+✅ "traer impermeable" si dice "bring rain gear"
+✅ Overview largo: "San Gerardo de Dota, ubicado en la Zona Sur de Costa Rica, es un pueblo rústico anidado en las montañas con clima especial y rica biodiversidad. Ofrece oportunidades únicas para la observación de aves incluyendo especies endémicas como Trogones, Colibríes Esmeralda, y el esquivo Quetzal Resplandeciente. Los visitantes pueden despertar entre bosques nubosos..." (contexto completo)
+
+**Formato de Salida Requerido (TODO EN ESPAÑOL):**
+```json
+{{
+  "page_type": "general_guide",
+  "destination": "string (ej: 'Costa Rica', 'Área del Volcán Arenal') - EN ESPAÑOL",
+  "destination_evidence": "cita exacta del texto fuente",
+  "overview": "string - PÁRRAFO LARGO Y COMPLETO (mínimo 3-5 oraciones) que combine TODA la información descriptiva del destino: ubicación geográfica, características del ecosistema, clima, flora y fauna específica mencionada (especies por nombre), tipo de experiencia que ofrece, qué hace único al lugar, por qué visitarlo. Extrae y combina TODO el texto descriptivo relevante de la página para crear un resumen rico y detallado que el chatbot pueda usar. NO seas breve - incluye todos los detalles mencionados - EN ESPAÑOL",
+  "overview_evidence": "cita exacta del texto fuente",
+  "tour_types_available": ["aventura", "cultural", "vida silvestre", "naturaleza", "playa", "gastronomía", "etc"] - EN ESPAÑOL,
+  "types_evidence": "cita exacta del texto fuente",
+  "regions": [
+    {{
+      "name": "nombre de la región - EN ESPAÑOL",
+      "description": "PÁRRAFO LARGO Y DETALLADO (mínimo 3-5 oraciones) con TODA la información sobre esta región: ubicación específica (montañas, costa, elevación), tipo de ecosistema (bosque nuboso, selva tropical, páramo), especies de vida silvestre destacadas mencionadas por nombre (Quetzal, Trogones, Colibríes específicos, etc), características del clima, tipo de lugar (pueblo rústico, ciudad, parque nacional, reserva), qué experiencia ofrece al visitante, por qué es especial. NO seas breve - extrae y combina TODA la información descriptiva sobre esta región para crear un texto rico en contexto - EN ESPAÑOL",
+      "popular_activities": ["actividad 1 EN ESPAÑOL", "actividad 2 EN ESPAÑOL"]
+    }}
+  ],
+  "regions_evidence": "cita exacta del texto fuente",
+  "price_range": {{
+    "min_usd": number or null,
+    "max_usd": number or null,
+    "typical_usd": number or null
+  }},
+  "price_evidence": "cita exacta del texto fuente",
+  "best_season": "string (ej: 'Diciembre-Abril (temporada seca)' o 'Todo el año') - EN ESPAÑOL",
+  "season_evidence": "cita exacta del texto fuente",
+  "seasonal_activities": [
+    {{
+      "season": "temporada seca / temporada verde / meses específicos - EN ESPAÑOL",
+      "recommended_activities": ["actividad 1 EN ESPAÑOL", "actividad 2 EN ESPAÑOL"],
+      "why_this_season": "razón - EN ESPAÑOL"
+    }}
+  ],
+  "seasonal_evidence": "cita exacta del texto fuente",
+  "best_time_of_day": "string or null - EN ESPAÑOL",
+  "time_evidence": "cita exacta del texto fuente",
+  "duration_range": "string or null (ej: '2-8 horas', 'medio día a día completo') - EN ESPAÑOL",
+  "duration_evidence": "cita exacta del texto fuente",
+  "tips": ["consejo práctico 1 EN ESPAÑOL", "consejo 2 EN ESPAÑOL", "consejos de empaque EN ESPAÑOL", "etc"],
+  "tips_evidence": "cita exacta del texto fuente",
+  "things_to_bring": ["artículo 1 EN ESPAÑOL", "artículo 2 EN ESPAÑOL", "etc"],
+  "bring_evidence": "cita exacta del texto fuente",
+  "featured_tours": [
+    {{
+      "name": "nombre del tour - EN ESPAÑOL",
+      "price_usd": number or null,
+      "duration": "string or null - EN ESPAÑOL",
+      "highlight": "string (por qué se destaca) - EN ESPAÑOL"
+    }}
+  ],
+  "featured_evidence": "cita exacta del texto fuente",
+  "total_tours_mentioned": number or null,
+  "booking_tips": "string or null (cómo reservar, cuándo reservar, etc) - EN ESPAÑOL",
+  "booking_evidence": "cita exacta del texto fuente",
+  "faqs": [
+    {{
+      "question": "texto de la pregunta - EN ESPAÑOL",
+      "answer": "texto de la respuesta - EN ESPAÑOL"
+    }}
+  ],
+  "faqs_evidence": "cita exacta del texto fuente",
+  "what_to_pack": ["artículo 1 EN ESPAÑOL", "artículo 2 EN ESPAÑOL"] or null,
+  "packing_evidence": "cita exacta del texto fuente",
+  "family_friendly": boolean or null,
+  "family_evidence": "cita exacta del texto fuente",
+  "accessibility_info": "string or null - EN ESPAÑOL",
+  "accessibility_evidence": "cita exacta del texto fuente",
+  "extraction_confidence": number (0.0 to 1.0),
+  "confidence_reasoning": "explicación breve EN ESPAÑOL"
+}}
+```
+
+**IMPORTANTE:** 
+- Si un campo no está EXPLÍCITAMENTE en el texto fuente, usa null inicialmente
+- TODO debe estar en español - traduce términos en inglés
+- Solo extrae lo que realmente está escrito en la página
+
+**EXCEPCIÓN - DERIVACIÓN INTELIGENTE (SOLO SI HAY INFORMACIÓN SUFICIENTE):**
+Después de extraer toda la información explícita, si has logrado obtener un "overview" o "regions.description" RICO Y DETALLADO (mínimo 3 oraciones con información concreta como ubicaciones específicas, especies nombradas, actividades detalladas), puedes DERIVAR campos vacíos basándote SOLAMENTE en esa información ya extraída:
+
+⚠️ REGLAS ESTRICTAS PARA DERIVACIÓN:
+1. ✅ Solo deriva si el overview/regions tiene información CONCRETA y ESPECÍFICA (no vaga ni genérica)
+2. ✅ Solo deriva campos que sean CONSECUENCIA LÓGICA DIRECTA de información extraída
+3. ❌ NO derives si solo tienes información genérica (ej: "buen destino para tours")
+4. ❌ NO derives si no estás 100% seguro de que la derivación es coherente con el texto
+5. ✅ Siempre marca en "confidence_reasoning" que fue derivado y de dónde
+
+**EJEMPLOS - CUÁNDO SÍ DERIVAR:**
+✅ Overview: "San Gerardo de Dota en Zona Sur de Costa Rica, montañas"
+   → Deriva destination (tiene ubicación específica)
+✅ Overview: "observación del Quetzal Resplandeciente, Trogones, Colibríes Esmeralda de Cabeza Cobriza"
+   → Deriva 1-2 featured_tours basados en estas especies concretas
+
+**EJEMPLOS - CUÁNDO NO DERIVAR:**
+❌ Overview: "destino para observación de aves" (muy genérico, sin especies)
+   → NO derives tours
+❌ No hay mención de precios, temporadas o duraciones
+   → Deja esos campos en null
+
+**CAMPOS QUE PUEDES DERIVAR (solo con información suficiente):**
+- "featured_tours": Solo si hay especies/actividades CONCRETAS nombradas en overview
+- "best_season": Solo si overview menciona clima/temporadas específicas
+- NO derives: precios, duraciones exactas, ubicaciones si no están mencionadas
+- Si mentions duración aproximada de actividades pero "duration_range" está vacío → deriva estimación lógica
+- TODO debe estar en español - traduce términos en inglés
+- Solo extrae lo que realmente está escrito en la página
+
+**Contenido a extraer:**
+{content}
+"""
+
+
+# REAL ESTATE PROMPTS (Specific vs General)
+# ----------------------------------------------------------------------------
+
+REAL_ESTATE_GUIDE_EXTRACTION_PROMPT = """You are a real estate market guide extraction specialist. This appears to be a GENERAL GUIDE page (not a single property), so extract overview information about the real estate market.
+
+**Instructions:**
+1. Extract general information about the real estate market and available properties
+2. DO NOT try to extract details of a single property (this is a guide/listing page)
+3. Focus on: destination, market overview, property types, price ranges, popular areas
+4. Use null for any field not found in the source
+
+**Required Output Format:**
+```json
+{{
+  "page_type": "general_guide",
+  "destination": "string (e.g., 'Costa Rica Real Estate', 'Guanacaste Properties')",
+  "destination_evidence": "exact quote",
+  "overview": "string (general description of the real estate market)",
+  "overview_evidence": "exact quote",
+  "property_types_available": ["condo", "house", "land", "commercial", "farm", "etc"],
+  "types_evidence": "exact quote",
+  "price_range": {{
+    "min_usd": number or null,
+    "max_usd": number or null,
+    "typical_usd": number or null
+  }},
+  "price_range_evidence": "exact quote",
+  "popular_areas": ["area 1", "area 2", "etc"],
+  "areas_evidence": "exact quote",
+  "market_trends": "string or null (description of current market conditions)",
+  "trends_evidence": "exact quote",
+  "featured_properties": [
+    {{
+      "name": "property name",
+      "price_usd": number or null,
+      "type": "string or null",
+      "highlight": "string (why it's featured)"
+    }}
+  ],
+  "featured_evidence": "exact quote",
+  "total_properties_mentioned": number or null,
+  "total_evidence": "exact quote",
+  "investment_tips": ["tip 1", "tip 2", "etc"],
+  "tips_evidence": "exact quote",
+  "legal_considerations": ["consideration 1", "consideration 2", "etc"],
+  "legal_evidence": "exact quote",
+  "featured_items_count": number or null,
+  "extraction_confidence": number (0.0 to 1.0),
+  "confidence_reasoning": "brief explanation"
 }}
 ```
 
@@ -235,16 +429,23 @@ CONTENT_TYPES: Dict[str, Dict[str, Any]] = {
             'tripadvisor',
             'airbnbexperiences',
             'klook.com',
+            'costarica.org',  # Costa Rica official tourism
         ],
         'keywords': [
-            'tour', 'tours', 'excursion', 'excursiones',
+            'tour', 'tours', 'excursion', 'excursiones', 'excursions',
             'activity', 'activities', 'actividades',
+            'adventure', 'adventures', 'aventura',
+            'experience', 'experiences', 'experiencias',
             'duration', 'duración',
-            'guide', 'guía',
+            'guide', 'guía', 'guided',
             'included', 'incluye', 'includes',
             'pickup', 'recogida',
             'participants', 'participantes',
             'difficulty', 'dificultad',
+            'booking', 'reserva', 'book',
+            'itinerary', 'itinerario',
+            'wildlife', 'nature', 'naturaleza',
+            'zip line', 'canopy', 'rafting', 'hiking',
         ],
         'description': 'Extrae información de tours y actividades: tipo, duración, precio, qué incluye, nivel de dificultad.',
     },
@@ -332,17 +533,27 @@ def get_content_type_config(content_type: str) -> Dict[str, Any]:
     return CONTENT_TYPES[content_type]
 
 
-def get_extraction_prompt(content_type: str) -> str:
-    """Get the extraction prompt for a content type."""
+def get_extraction_prompt(content_type: str, page_type: str = 'specific') -> str:
+    """
+    Get the extraction prompt for a content type and page type.
+    
+    Args:
+        content_type: Type of content (tour, restaurant, real_estate, etc.)
+        page_type: 'specific' (single item) or 'general' (guide/listing)
+    
+    Returns:
+        Appropriate extraction prompt
+    """
     from .prompts import PROPERTY_EXTRACTION_PROMPT
     
     config = get_content_type_config(content_type)
     prompt_key = config['prompt_key']
     
     # Map prompt keys to actual prompts
+    # For real_estate and tour: check page_type to choose specific vs general prompt
     prompts = {
-        'PROPERTY_EXTRACTION_PROMPT': PROPERTY_EXTRACTION_PROMPT,
-        'TOUR_EXTRACTION_PROMPT': TOUR_EXTRACTION_PROMPT,
+        'PROPERTY_EXTRACTION_PROMPT': PROPERTY_EXTRACTION_PROMPT if page_type == 'specific' else REAL_ESTATE_GUIDE_EXTRACTION_PROMPT,
+        'TOUR_EXTRACTION_PROMPT': TOUR_EXTRACTION_PROMPT if page_type == 'specific' else TOUR_GUIDE_EXTRACTION_PROMPT,
         'RESTAURANT_EXTRACTION_PROMPT': RESTAURANT_EXTRACTION_PROMPT,
         'LOCAL_TIPS_EXTRACTION_PROMPT': LOCAL_TIPS_EXTRACTION_PROMPT,
         'TRANSPORTATION_EXTRACTION_PROMPT': TRANSPORTATION_EXTRACTION_PROMPT,
