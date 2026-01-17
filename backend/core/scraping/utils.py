@@ -111,7 +111,7 @@ class JSONUtils:
         Handles:
         - Markdown code blocks (```json ... ```)
         - Leading/trailing whitespace
-        - Common syntax errors (simple repair attempts if needed)
+        - Common syntax errors (trailing commas, missing braces, comments)
         """
         if not content:
             return {}
@@ -120,13 +120,28 @@ class JSONUtils:
         content = re.sub(r'^```(?:json)?\s*', '', content.strip(), flags=re.MULTILINE)
         content = re.sub(r'\s*```$', '', content, flags=re.MULTILINE)
         
+        # Remove comments (//...)
+        content = re.sub(r'//.*', '', content)
+        
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse JSON directly: {e}. Attempting repair.")
-            # Basic repair: sometimes AI adds comments or trailing commas
-            # For now, let's just log and return empty, or try a simpler regex extract if it's a simple dict
-            return {}
+            
+            # Common Fix 1: Remove trailing commas
+            content_fixed = re.sub(r',\s*([\]}])', r'\1', content)
+            
+            # Common Fix 2: Ensure braces match (simplistic)
+            if content_fixed.count('{') > content_fixed.count('}'):
+                content_fixed += '}' * (content_fixed.count('{') - content_fixed.count('}'))
+            if content_fixed.count('[') > content_fixed.count(']'):
+                content_fixed += ']' * (content_fixed.count('[') - content_fixed.count(']'))
+                
+            try:
+                return json.loads(content_fixed)
+            except json.JSONDecodeError:
+                logger.error("JSON repair failed.")
+                return {}
 
 class DateUtils:
     """Utilities for standardizing dates."""
