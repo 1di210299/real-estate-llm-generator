@@ -256,6 +256,63 @@ class ProcessGoogleSheetView(APIView):
         }
         return names.get(page_type, page_type.capitalize())
     
+    def _write_property_to_sheet_immediately(self, sheets_service, spreadsheet_id, property_obj, content_type, page_type):
+        """
+        Write a single property to Google Sheet immediately after processing.
+        Creates sheet tab if needed and appends a single row.
+        """
+        try:
+            # Get schema for this content/page type combination
+            schema = self._get_column_schema(content_type, page_type)
+            headers = schema['headers']
+            field_keys = schema['field_keys']
+            
+            # Create sheet name: real_estate_Específicos, tour_Generales, etc.
+            sheet_name = f"{content_type}_{self._get_sheet_name(page_type)}"
+            
+            # Check if sheet already exists
+            try:
+                sheets_service.get_sheet_metadata(spreadsheet_id, sheet_name)
+                sheet_exists = True
+            except:
+                sheet_exists = False
+            
+            # Create sheet if it doesn't exist
+            if not sheet_exists:
+                logger.info(f"📋 Creating new sheet: {sheet_name}")
+                sheets_service.create_sheet(spreadsheet_id, sheet_name)
+                
+                # Write headers
+                header_row = [headers]
+                sheets_service.append_rows(
+                    spreadsheet_id,
+                    f"{sheet_name}!A1",
+                    header_row,
+                    sheet_name=sheet_name
+                )
+                logger.info(f"   Headers written to {sheet_name}")
+            
+            # Format property data row
+            data_row = []
+            for key in field_keys:
+                value = self._extract_field_value(property_obj, key)
+                data_row.append(value)
+            
+            # Append single row to sheet
+            sheets_service.append_rows(
+                spreadsheet_id,
+                f"{sheet_name}!A:Z",
+                [data_row],
+                sheet_name=sheet_name
+            )
+            
+            logger.info(f"✅ Property written to {sheet_name}: {property_obj.property_name or 'N/A'}")
+            return True, sheet_name
+            
+        except Exception as e:
+            logger.error(f"❌ Error writing property to sheet: {e}")
+            return False, None
+    
     def post(self, request):
         """Process properties from Google Sheet."""
         import uuid
@@ -603,6 +660,39 @@ class ProcessGoogleSheetView(APIView):
                                     classified_results[tab_key].append(property_obj)
                                     logger.info(f"➕ Added property to '{tab_key}' group (total: {len(classified_results[tab_key])})")
                                     
+                                    # 🔥 NEW: Write property to Google Sheet IMMEDIATELY
+                                    sheets_service = GoogleSheetsService()
+                                    write_success, sheet_name = self._write_property_to_sheet_immediately(
+                                        sheets_service,
+                                        spreadsheet_id,
+                                        property_obj,
+                                        content_type,
+                                        page_type
+                                    )
+                                    
+                                    if write_success:
+                                        logger.info(f"📝 Property written immediately to sheet: {sheet_name}")
+                                        # Send progress update with sheet name
+                                        if channel_layer:
+                                            async_to_sync(channel_layer.group_send)(
+                                                f'progress_{task_id}',
+                                                {
+                                                    'type': 'progress_update',
+                                                    'progress': int(((index + 1) / total_urls) * 100),
+                                                    'status': 'completed',
+                                                    'message': f'✅ Guardado {index + 1} de {total_urls}',
+                                                    'stage': 'completed',
+                                                    'substage': f'Escrito en pestaña: {sheet_name}',
+                                                    'step': index + 1,
+                                                    'total_steps': total_urls,
+                                                    'url': url
+                                                }
+                                            )
+                                    
+                                    # DO NOT update original sheet - keep URLs page intact
+                                    
+                                    processed_count += 1
+                                    
                                     # DO NOT update original sheet - keep URLs page intact
                                     
                                     processed_count += 1
@@ -740,6 +830,7 @@ class ProcessGoogleSheetView(APIView):
                     'total': total_urls,
                     'processed': processed_count,
                     'failed': failed_count,
+                    'task_id': task_id,
                     'spreadsheet_url': f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit',
                     'tabs': tabs_created
                 }
