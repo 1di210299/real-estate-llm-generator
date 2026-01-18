@@ -18,12 +18,10 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, []),
 )
 
-# Read .env file (explicitly, not .env.local)
+# Read .env file if it exists (optional in production where env vars are injected)
 env_file = os.path.join(BASE_DIR, '.env')
 if os.path.exists(env_file):
     environ.Env.read_env(env_file)
-else:
-    raise FileNotFoundError(f"Missing {env_file} configuration file")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-this-in-production')
