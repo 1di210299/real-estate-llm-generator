@@ -4,9 +4,12 @@ Document model for RAG knowledge base.
 
 import uuid
 from django.db import models
-from django.contrib.postgres.fields import ArrayField
+# from django.contrib.postgres.fields import ArrayField
+ArrayField = lambda field, **kwargs: models.JSONField(**kwargs)
 from django.utils.translation import gettext_lazy as _
-from pgvector.django import VectorField
+# from pgvector.django import VectorField
+def VectorField(dimensions=None, **kwargs):
+    return models.JSONField(**kwargs)
 
 from apps.tenants.models import Tenant
 

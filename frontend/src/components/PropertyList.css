@@ -112,6 +112,16 @@
   color: white;
 }
 
+.badge-info {
+  background: #3182ce;
+  color: white;
+}
+
+.badge-secondary {
+  background: #718096;
+  color: white;
+}
+
 .property-price {
   font-size: 24px;
   font-weight: bold;

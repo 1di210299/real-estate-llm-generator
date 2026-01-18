@@ -22,6 +22,8 @@ export interface PropertyData {
   status_display?: string;
   created_at?: string;
   extraction_confidence?: number;
+  classification?: string;
+  category?: string;
 }
 
 export interface IngestResponse {

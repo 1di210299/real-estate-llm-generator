@@ -6,8 +6,17 @@ Falls back to requests for simple HTML pages.
 import asyncio
 import logging
 import random
+import sys
 from typing import Dict, Optional
 from urllib.parse import urlparse
+
+# Force Proactor event loop on Windows for Playwright/Subprocess support
+if sys.platform == 'win32':
+    try:
+        from asyncio import WindowsProactorEventLoopPolicy
+        asyncio.set_event_loop_policy(WindowsProactorEventLoopPolicy())
+    except ImportError:
+        pass
 
 import httpx
 from bs4 import BeautifulSoup
@@ -156,297 +165,45 @@ class WebScraper:
         """Scrape using Playwright for JavaScript-heavy sites."""
         logger.info(f"Scraping with Playwright: {url}")
         
-        MAX_RETRIES = 3
-        last_error = None
-        
-        for attempt in range(MAX_RETRIES):
+        async with async_playwright() as p:
             try:
-                if attempt > 0:
-                    wait_time = attempt * 5
-                    logger.info(f"🔄 Retry attempt {attempt + 1}/{MAX_RETRIES} for {url} after {wait_time}s...")
-                    await asyncio.sleep(wait_time)
-
-                async with async_playwright() as p:
-                    browser = await p.chromium.launch(
-                headless=settings.PLAYWRIGHT_HEADLESS,
-                args=[
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-dev-shm-usage',
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-web-security',
-                    '--disable-features=IsolateOrigins,site-per-process',
-                    '--disable-infobars',
-                    '--window-size=1920,1080',
-                    '--start-maximized',
-                    '--disable-extensions',
-                    '--no-first-run',
-                    '--no-default-browser-check',
-                    '--disable-default-apps',
-                    '--disable-popup-blocking',
-                    '--disable-translate',
-                    '--disable-background-timer-throttling',
-                    '--disable-renderer-backgrounding',
-                    '--disable-device-discovery-notifications',
-                    '--disable-gpu',
-                    '--no-zygote'
-                ]
-            )
-            
-            try:
-                # Random delay before starting (2-5 seconds)
-                await asyncio.sleep(random.uniform(2, 5))
-                
-                # Check if this site needs residential proxy
-                proxy_config = None
-                if self._needs_residential_proxy(url):
-                    proxy_config = {
-                        'server': self.residential_proxy
-                    }
-                    logger.info(f"🌐 Using residential proxy for: {url}")
-                
+                browser = await p.chromium.launch(headless=True)
                 context = await browser.new_context(
-                    proxy=proxy_config,
-                    user_agent=self._get_random_user_agent(),
-                    viewport={'width': 1920, 'height': 1080},
-                    locale='es-CR',
-                    timezone_id='America/Costa_Rica',
-                    extra_http_headers={
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'es-CR,es;q=0.9,en;q=0.8',
-                        'Accept-Encoding': 'gzip, deflate, br',
-                        'DNT': '1',
-                        'Connection': 'keep-alive',
-                        'Upgrade-Insecure-Requests': '1',
-                        'Sec-Fetch-Dest': 'document',
-                        'Sec-Fetch-Mode': 'navigate',
-                        'Sec-Fetch-Site': 'none',
-                        'Sec-Fetch-User': '?1',
-                        'Cache-Control': 'max-age=0'
-                    }
+                    user_agent=self.user_agent,
+                    viewport={'width': 1920, 'height': 1080}
                 )
                 
-                # Add stealth scripts to hide automation
-                await context.add_init_script("""
-                    // Remove webdriver property
-                    Object.defineProperty(navigator, 'webdriver', {
-                        get: () => undefined
-                    });
-                    
-                    // Mock plugins
-                    Object.defineProperty(navigator, 'plugins', {
-                        get: () => [1, 2, 3, 4, 5]
-                    });
-                    
-                    // Mock languages
-                    Object.defineProperty(navigator, 'languages', {
-                        get: () => ['es-CR', 'es', 'en-US', 'en']
-                    });
-                    
-                    // Mock Chrome runtime
-                    window.chrome = {
-                        runtime: {}
-                    };
-                    
-                    // Mock Permissions API
-                    const originalQuery = window.navigator.permissions.query;
-                    window.navigator.permissions.query = (parameters) => (
-                        parameters.name === 'notifications' ?
-                            Promise.resolve({ state: Notification.permission }) :
-                            originalQuery(parameters)
-                    );
-                    
-                    // Override toString methods to hide proxy behavior
-                    const originalToString = Function.prototype.toString;
-                    Function.prototype.toString = function() {
-                        if (this === window.navigator.permissions.query) {
-                            return 'function query() { [native code] }';
-                        }
-                        return originalToString.call(this);
-                    };
-                    
-                    // Mock hardware concurrency
-                    Object.defineProperty(navigator, 'hardwareConcurrency', {
-                        get: () => 8
-                    });
-                    
-                    // Mock device memory
-                    Object.defineProperty(navigator, 'deviceMemory', {
-                        get: () => 8
-                    });
-                    
-                    // Mock platform
-                    Object.defineProperty(navigator, 'platform', {
-                        get: () => 'MacIntel'
-                    });
-                    
-                    // Mock screen properties
-                    Object.defineProperty(screen, 'colorDepth', {
-                        get: () => 24
-                    });
-                    
-                    Object.defineProperty(screen, 'pixelDepth', {
-                        get: () => 24
-                    });
-                    
-                    // Add fake battery API
-                    if (!navigator.getBattery) {
-                        navigator.getBattery = () => Promise.resolve({
-                            charging: true,
-                            chargingTime: 0,
-                            dischargingTime: Infinity,
-                            level: 1.0,
-                            addEventListener: () => {},
-                            removeEventListener: () => {}
-                        });
-                    }
-                    
-                    // Mock connection API
-                    Object.defineProperty(navigator, 'connection', {
-                        get: () => ({
-                            effectiveType: '4g',
-                            rtt: 50,
-                            downlink: 10,
-                            saveData: false
-                        })
-                    });
-                    
-                    // Hide automation in iframe
-                    Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
-                        get: function() {
-                            const win = this.contentWindowGetter.call(this);
-                            if (win) {
-                                try {
-                                    win.navigator.webdriver = undefined;
-                                } catch(e) {}
-                            }
-                            return win;
-                        }
-                    });
-                    HTMLIFrameElement.prototype.contentWindowGetter = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow').get;
-                    
-                    // Add missing window properties
-                    window.chrome.app = {
-                        isInstalled: false,
-                        InstallState: {
-                            DISABLED: 'disabled',
-                            INSTALLED: 'installed',
-                            NOT_INSTALLED: 'not_installed'
-                        },
-                        RunningState: {
-                            CANNOT_RUN: 'cannot_run',
-                            READY_TO_RUN: 'ready_to_run',
-                            RUNNING: 'running'
-                        }
-                    };
-                    
-                    window.chrome.csi = function() {};
-                    window.chrome.loadTimes = function() {};
-                    
-                    // Mock OuterHTML to not show iframe[srcdoc]
-                    const originalGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
-                    Object.getOwnPropertyDescriptor = function(target, property) {
-                        if (target === HTMLIFrameElement.prototype && property === 'srcdoc') {
-                            return undefined;
-                        }
-                        return originalGetOwnPropertyDescriptor(target, property);
-                    };
-                """)
-                
+                # Add anti-detection scripts if needed
                 page = await context.new_page()
                 
-                # Random mouse movements to simulate human behavior
-                await page.mouse.move(random.randint(100, 500), random.randint(100, 500))
-                await asyncio.sleep(random.uniform(0.5, 1.5))
+                # Set timeout
+                page.set_default_timeout(self.timeout * 1000)
                 
-                # Navigate with longer timeout and wait for network idle
-                try:
-                    await page.goto(url, wait_until='networkidle', timeout=60000)
-                    logger.info("✅ Page loaded with networkidle")
-                except PlaywrightTimeout:
-                    # Fallback to domcontentloaded if networkidle takes too long
-                    logger.warning("⚠️ networkidle timeout, falling back to domcontentloaded")
-                    await page.goto(url, wait_until='domcontentloaded', timeout=60000)
+                # Navigate
+                response = await page.goto(url, wait_until='domcontentloaded')
                 
-                # Random scroll to simulate human behavior
-                await page.evaluate(f'window.scrollTo(0, {random.randint(100, 300)})')
-                await asyncio.sleep(random.uniform(1, 2))
+                if not response:
+                    raise ScraperError(f"Failed to load page: {url}")
                 
-                # Wait for network to be idle (if not already)
-                try:
-                    await page.wait_for_load_state('networkidle', timeout=15000)
-                except:
-                    logger.warning("Network idle timeout - continuing anyway")
+                if response.status >= 400:
+                    raise ScraperError(f"HTTP error {response.status} scraping {url}")
                 
-                # Wait for site-specific selectors to ensure content is loaded
-                domain = urlparse(url).netloc
-                if 'brevitas.com' in domain:
-                    logger.info("🔍 Brevitas detected - waiting for key elements...")
-                    try:
-                        # Wait for title and price elements to be visible
-                        await page.wait_for_selector('.show__title', timeout=10000, state='visible')
-                        logger.info("✅ Brevitas title element loaded")
-                        await page.wait_for_selector('.show__price', timeout=10000, state='visible')
-                        logger.info("✅ Brevitas price element loaded")
-                    except PlaywrightTimeout:
-                        logger.warning("⚠️ Some Brevitas elements didn't load in time, continuing anyway...")
+                # Wait for some content to load
+                await page.wait_for_timeout(2000)  # Simple wait for JS to execute
                 
-                # Wait a bit for any lazy-loaded content with random delay
-                await page.wait_for_timeout(random.randint(2000, 4000))
-                
-                # Check if it's encuentra24.com/costa-rica-es to extract HTML
-                if 'encuentra24.com/costa-rica-es' in url:
-                    logger.info("Encuentra24 Costa Rica detected - extracting full HTML for structured extraction")
-                    try:
-                        # Wait longer for dynamic content to load with random delay
-                        await page.wait_for_timeout(random.randint(3000, 5000))
-                        
-                        # Extract full HTML content
-                        html_content = await page.content()
-                        text_content = await page.inner_text('body')
-                        title = await page.title()
-                        logger.info(f"✅ Extracted full HTML: {len(html_content)} chars")
-                        
-                        await browser.close()
-                        return {
-                            'success': True,
-                            'html': html_content,
-                            'text': text_content,
-                            'title': title,
-                            'images': [],
-                            'url': url,
-                            'method': 'playwright'
-                        }
-                    except Exception as e:
-                        logger.warning(f"⚠️ Error extracting HTML: {e}, falling back to full page")
-                        html_content = await page.content()
-                        text_content = await page.inner_text('body')
-                        title = await page.title()
-                        await browser.close()
-                        return {
-                            'success': True,
-                            'html': html_content,
-                            'text': text_content,
-                            'title': title,
-                            'images': [],
-                            'url': url,
-                            'method': 'playwright'
-                        }
-                
-                # Get full HTML content for other sites
+                # Get content
                 html_content = await page.content()
-                text_content = await page.inner_text('body')
-                
-                # Try to extract property images
-                images = await page.query_selector_all('img')
-                image_urls = []
-                for img in images[:10]:  # Limit to first 10 images
-                    src = await img.get_attribute('src')
-                    if src and ('property' in src.lower() or 'photo' in src.lower()):
-                        image_urls.append(src)
-                
-                # Get page title
                 title = await page.title()
+                
+                # Extract text
+                # We can use evaluating JS to get text or use BS4 on the html_content
+                # For consistency with other methods, let's use BS4 on the extracted HTML
+                soup = BeautifulSoup(html_content, 'lxml')
+                text_content = soup.get_text(separator='\n', strip=True)
+                
+                # Extract images using JS for better reliability on lazy loaded ones
+                images = await page.eval_on_selector_all('img', 'imgs => imgs.map(img => img.src).filter(src => src)')
+                images = images[:10]  # Limit to 10
                 
                 await browser.close()
                 
@@ -455,25 +212,17 @@ class WebScraper:
                     'html': html_content,
                     'text': text_content,
                     'title': title,
-                    'images': image_urls,
+                    'images': images,
                     'url': url,
                     'method': 'playwright'
                 }
                 
             except PlaywrightTimeout:
-                if attempt == MAX_RETRIES - 1:
-                    await browser.close()
-                    raise ScraperError(f"Timeout scraping {url}")
-                logger.warning(f"Timeout on attempt {attempt+1}, retrying...")
-                await browser.close()
-            
+                logger.error(f"Playwright timeout scraping {url}")
+                raise ScraperError(f"Timeout scraping {url}")
             except Exception as e:
-                if attempt == MAX_RETRIES - 1:
-                    await browser.close()
-                    logger.error(f"Playwright error: {e}")
-                    raise ScraperError(f"Error scraping {url}: {str(e)}")
-                logger.warning(f"Error on attempt {attempt+1}: {e}, retrying...")
-                await browser.close()
+                logger.error(f"Playwright error: {e}")
+                raise ScraperError(f"Playwright error scraping {url}: {str(e)}")
     
     async def _scrape_with_httpx(self, url: str) -> Dict[str, any]:
         """Scrape using httpx for static HTML pages."""
@@ -640,8 +389,8 @@ class WebScraper:
             logger.info(f"✅ [DECISION] Trying httpx first (simple scraping): {url}")
             try:
                 result = await self._scrape_with_httpx(url)
-            except ScraperError:
-                logger.info(f"⚠️ [FALLBACK] httpx failed, falling back to Playwright: {url}")
+            except ScraperError as e:
+                logger.info(f"⚠️ [FALLBACK] httpx failed ({str(e)}), falling back to Playwright: {url}")
                 result = await self._scrape_with_playwright(url)
         
         return result

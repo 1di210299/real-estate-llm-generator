@@ -5,10 +5,17 @@ Property model for real estate listings.
 import uuid
 from decimal import Decimal
 from django.db import models
-from django.contrib.postgres.fields import ArrayField
-from django.contrib.postgres.search import SearchVectorField
+# from django.contrib.postgres.fields import ArrayField # SQLite compat
+ArrayField = lambda field, **kwargs: models.JSONField(**kwargs)
+# from django.contrib.postgres.search import SearchVectorField
+def SearchVectorField(**kwargs):
+    return models.TextField(**kwargs)
+
 from django.utils.translation import gettext_lazy as _
-from pgvector.django import VectorField
+
+# from pgvector.django import VectorField # SQLite compat
+def VectorField(dimensions=None, **kwargs):
+    return models.JSONField(**kwargs)
 
 from apps.tenants.models import Tenant
 
@@ -130,6 +137,22 @@ class Property(models.Model):
         choices=PropertyStatus.CHOICES,
         default=PropertyStatus.AVAILABLE,
         help_text=_('Current status of the property')
+    )
+
+    # Classification
+    classification = models.CharField(
+        _('Classification'),
+        max_length=20,
+        null=True,
+        blank=True,
+        help_text=_('General (broad info) or Specific (single property)')
+    )
+
+    category = models.CharField(
+        _('Category'),
+        max_length=50,
+        default='real_estate',
+        help_text=_('Category of the content (e.g., real_estate)')
     )
     
     # Location

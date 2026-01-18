@@ -249,6 +249,21 @@ PROPERTY_EXTRACTION_PROMPT = """You are a data extraction specialist. Extract pr
 - "$1,250,000" should be extracted as 1250000 (not 1250)
 - "566.71 m²" should be extracted as 566.71
 
+**Classification Rules (CRITICAL):**
+1. **Specific**: Use this when the content describes a SINGLE specific property with concrete details (price, beds, baths) intended for sale or rent.
+   - Example: "3 Bedroom Villa in Jaco for $500k" -> specific
+2. **General**: Use this for content that is:
+   - A list of multiple properties (search results)
+   - General agency information
+   - Blog posts about the market
+   - Contact pages
+   - Landing pages describing services
+   - Example: "Top 10 Condos in Jaco" -> general
+   - Example: "Properties under $200k" (list) -> general
+
+**Category Rules:**
+- Set category to "real_estate" for all property-related content.
+
 **Special Extraction Rules:**
 
 **GPS Coordinates & Location:**

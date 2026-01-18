@@ -62,5 +62,10 @@ class PropertyData(BaseModel):
     parking_spaces: Optional[int] = Field(None, description="Number of parking spaces")
     parking_evidence: Optional[str] = Field(None, description="Exact quote from source for parking_spaces")
     
+    classification: Optional[str] = Field(None, description="Classify as 'specific' (single property detail) or 'general' (list of properties or broad info)")
+    classification_evidence: Optional[str] = Field(None, description="Reasoning for classification")
+
+    category: str = Field("real_estate", description="Content category, defaulting to 'real_estate'")
+    
     extraction_confidence: float = Field(..., description="0.0 to 1.0 confidence score")
     confidence_reasoning: str = Field(..., description="Explanation of confidence score")

@@ -20,13 +20,13 @@ export default function GoogleSheetsIntegration() {
   const [createdTemplate, setCreatedTemplate] = useState<SheetTemplate | null>(null)
   const [resultsSpreadsheet, setResultsSpreadsheet] = useState<SheetTemplate | null>(null)
   const [taskId, setTaskId] = useState<string | null>(null)
-  
+
   // Progress tracking with WebSocket
   const progressState = useProgress(taskId, {
     onComplete: (data) => {
       console.log('✅ Processing complete:', data)
-      setMessage({ 
-        type: 'success', 
+      setMessage({
+        type: 'success',
         text: '¡Procesamiento completado! Revisa tu email y el Google Sheet.'
       })
       setIsProcessing(false)
@@ -42,7 +42,7 @@ export default function GoogleSheetsIntegration() {
     if (import.meta.env.MODE === 'production') {
       return import.meta.env.VITE_API_URL || window.location.origin
     }
-    return import.meta.env.VITE_API_URL || 'http://localhost:8080'
+    return import.meta.env.VITE_API_URL || 'http://localhost:8000'
   }
 
   const API_BASE = getApiBase()
@@ -75,8 +75,8 @@ export default function GoogleSheetsIntegration() {
           spreadsheet_url: data.spreadsheet_url
         })
         setSpreadsheetId(data.spreadsheet_id)
-        setMessage({ 
-          type: 'success', 
+        setMessage({
+          type: 'success',
           text: '¡Template creado! Abre el link, compártelo con la cuenta de servicio, y pega tus URLs.'
         })
       } else {
@@ -136,26 +136,26 @@ export default function GoogleSheetsIntegration() {
         if (data.task_id) {
           setTaskId(data.task_id)
         }
-        
+
         // Store results spreadsheet info if created
         if (data.results_spreadsheet) {
           setResultsSpreadsheet(data.results_spreadsheet)
         }
-        
+
         // For synchronous processing, show immediate results
         if (data.status === 'completed') {
           const total = data.total || 0
           const processed = data.processed || 0
           const failed = data.failed || 0
-          
+
           let successMessage = `✅ Completado! Procesadas: ${processed}, Fallidas: ${failed}, Total: ${total}. Se envió email a ${notifyEmail}.`
-          
+
           if (data.results_spreadsheet) {
             successMessage += ' Se creó un Google Sheet con los resultados.'
           }
-          
-          setMessage({ 
-            type: processed > 0 ? 'success' : 'info', 
+
+          setMessage({
+            type: processed > 0 ? 'success' : 'info',
             text: successMessage
           })
           setIsProcessing(false)
@@ -187,7 +187,7 @@ export default function GoogleSheetsIntegration() {
         <header className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M19.5 2h-15A2.5 2.5 0 002 4.5v15A2.5 2.5 0 004.5 22h15a2.5 2.5 0 002.5-2.5v-15A2.5 2.5 0 0019.5 2zM7 6h10v2H7V6zm10 10H7v-2h10v2zm0-4H7v-2h10v2z"/>
+              <path d="M19.5 2h-15A2.5 2.5 0 002 4.5v15A2.5 2.5 0 004.5 22h15a2.5 2.5 0 002.5-2.5v-15A2.5 2.5 0 0019.5 2zM7 6h10v2H7V6zm10 10H7v-2h10v2zm0-4H7v-2h10v2z" />
             </svg>
             <h1 className="text-3xl font-bold text-gray-800">Integración con Google Sheets</h1>
           </div>
@@ -196,23 +196,22 @@ export default function GoogleSheetsIntegration() {
 
         {/* Message Alert */}
         {message && (
-          <div className={`mb-6 p-4 rounded-lg border-l-4 ${
-            message.type === 'success' ? 'bg-green-50 border-green-500 text-green-800' :
-            message.type === 'error' ? 'bg-red-50 border-red-500 text-red-800' :
-            'bg-blue-50 border-blue-500 text-blue-800'
-          }`}>
+          <div className={`mb-6 p-4 rounded-lg border-l-4 ${message.type === 'success' ? 'bg-green-50 border-green-500 text-green-800' :
+              message.type === 'error' ? 'bg-red-50 border-red-500 text-red-800' :
+                'bg-blue-50 border-blue-500 text-blue-800'
+            }`}>
             <div className="flex items-start gap-3">
               {message.type === 'success' ? (
                 <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               ) : message.type === 'error' ? (
                 <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               ) : (
                 <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
               )}
               <p className="text-sm font-medium">{message.text}</p>
@@ -229,7 +228,7 @@ export default function GoogleSheetsIntegration() {
               </div>
               <h2 className="text-xl font-bold text-gray-800">Crear Nuevo Template</h2>
             </div>
-            
+
             <p className="text-sm text-gray-600 mb-6">
               Crea un nuevo Google Sheet con las columnas configuradas automáticamente
             </p>
@@ -241,7 +240,7 @@ export default function GoogleSheetsIntegration() {
                 <div className="flex justify-center mb-3">
                   <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-2xl animate-bounce">
                     <svg className="w-10 h-10 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                   </div>
                 </div>
@@ -251,7 +250,7 @@ export default function GoogleSheetsIntegration() {
                   <div className="text-center mb-3">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                       </svg>
                       <h3 className="text-xl font-bold text-gray-900">
                         Función Bloqueada
@@ -261,16 +260,16 @@ export default function GoogleSheetsIntegration() {
                       REQUIERE GOOGLE WORKSPACE
                     </span>
                   </div>
-                  
+
                   <p className="text-gray-700 text-xs mb-3 text-center leading-relaxed">
                     La creación automática de Google Sheets solo funciona con cuentas de{' '}
                     <strong className="text-orange-600">Google Workspace</strong> (servicio de pago).
                   </p>
-                  
+
                   <div className="bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-3 mb-3">
                     <div className="flex items-start gap-2">
                       <svg className="w-6 h-6 text-yellow-500 flex-shrink-0 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/>
+                        <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
                       </svg>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-blue-900 mb-1">
@@ -278,55 +277,55 @@ export default function GoogleSheetsIntegration() {
                         </p>
                         <p className="text-[10px] text-gray-700 mb-2 leading-relaxed">
                           Crea tu sheet en{' '}
-                          <a 
-                            href="https://sheets.google.com/create" 
-                            target="_blank" 
+                          <a
+                            href="https://sheets.google.com/create"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800 underline font-bold inline-flex items-center gap-0.5"
                           >
                             sheets.google.com
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+                              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
                             </svg>
                           </a>
                           {' '}y procésalo con{' '}
                           <span className="font-bold text-purple-700 inline-flex items-center gap-0.5">
                             Sección 2
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd"/>
+                              <path fillRule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                             </svg>
                           </span>
                         </p>
-                        
+
                         {/* Compact guide with icons */}
                         <div className="bg-white rounded p-2 text-[9px] text-gray-600 space-y-0.5">
                           <div className="flex items-center gap-1 font-bold text-gray-800 mb-1">
                             <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd"/>
+                              <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
                             </svg>
                             Guía Rápida:
                           </div>
                           <div className="flex items-start gap-1">
                             <svg className="w-2.5 h-2.5 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd"/>
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
                             </svg>
                             <span>Nuevo sheet → Headers: URL|Status|etc</span>
                           </div>
                           <div className="flex items-start gap-1">
                             <svg className="w-2.5 h-2.5 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd"/>
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
                             </svg>
                             <span>URLs en columna A → "Pendiente" en C</span>
                           </div>
                           <div className="flex items-start gap-1">
                             <svg className="w-2.5 h-2.5 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd"/>
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
                             </svg>
                             <span>Compartir con service account</span>
                           </div>
                           <div className="flex items-start gap-1 font-bold text-purple-700">
                             <svg className="w-2.5 h-2.5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd"/>
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
                             </svg>
                             <span>¡Usar Sección 2!</span>
                           </div>
@@ -343,8 +342,8 @@ export default function GoogleSheetsIntegration() {
                       className="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
-                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
                       </svg>
                       Crear Sheet Manual (Gratis)
                     </a>
@@ -356,61 +355,61 @@ export default function GoogleSheetsIntegration() {
             {/* Original content (hidden behind overlay) */}
             <div className="opacity-30 pointer-events-none">
               <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Título del Sheet
-                </label>
-                <input
-                  type="text"
-                  value={templateTitle}
-                  onChange={(e) => setTemplateTitle(e.target.value)}
-                  placeholder="Propiedades Enero 2026"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-green-500/20 focus:border-green-500 transition-all"
-                  disabled={isCreating}
-                />
-              </div>
-
-              <button
-                onClick={handleCreateTemplate}
-                disabled={isCreating}
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-6 rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-bold flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                {isCreating ? 'CREANDO...' : 'CREAR TEMPLATE'}
-              </button>
-            </div>
-
-            {createdTemplate && (
-              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                  </svg>
-                  Template Creado
-                </h3>
-                <div className="space-y-2">
-                  <div>
-                    <span className="text-xs font-medium text-green-700">Spreadsheet ID:</span>
-                    <p className="text-sm font-mono text-green-900 bg-white px-2 py-1 rounded mt-1 break-all">
-                      {createdTemplate.spreadsheet_id}
-                    </p>
-                  </div>
-                  <a
-                    href={createdTemplate.spreadsheet_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-800 mt-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                    </svg>
-                    Abrir Google Sheet
-                  </a>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Título del Sheet
+                  </label>
+                  <input
+                    type="text"
+                    value={templateTitle}
+                    onChange={(e) => setTemplateTitle(e.target.value)}
+                    placeholder="Propiedades Enero 2026"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-green-500/20 focus:border-green-500 transition-all"
+                    disabled={isCreating}
+                  />
                 </div>
+
+                <button
+                  onClick={handleCreateTemplate}
+                  disabled={isCreating}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-6 rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-bold flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  {isCreating ? 'CREANDO...' : 'CREAR TEMPLATE'}
+                </button>
               </div>
-            )}
+
+              {createdTemplate && (
+                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Template Creado
+                  </h3>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-xs font-medium text-green-700">Spreadsheet ID:</span>
+                      <p className="text-sm font-mono text-green-900 bg-white px-2 py-1 rounded mt-1 break-all">
+                        {createdTemplate.spreadsheet_id}
+                      </p>
+                    </div>
+                    <a
+                      href={createdTemplate.spreadsheet_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-800 mt-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Abrir Google Sheet
+                    </a>
+                  </div>
+                </div>
+              )}
 
             </div> {/* End opacity-30 pointer-events-none */}
 
@@ -434,7 +433,7 @@ export default function GoogleSheetsIntegration() {
               </div>
               <h2 className="text-xl font-bold text-gray-800">Procesar Sheet Existente</h2>
             </div>
-            
+
             <p className="text-sm text-gray-600 mb-6">
               Procesa todas las URLs con status "Pendiente" de un Google Sheet
             </p>
@@ -525,7 +524,7 @@ export default function GoogleSheetsIntegration() {
                 className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 px-6 rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-bold flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 {isProcessing ? 'PROCESANDO...' : 'PROCESAR SHEET'}
               </button>
@@ -557,7 +556,7 @@ export default function GoogleSheetsIntegration() {
                   className="inline-flex items-center gap-2 text-sm font-semibold text-purple-700 hover:text-purple-800"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
                   Abrir este Sheet en Google
                 </a>
@@ -568,7 +567,7 @@ export default function GoogleSheetsIntegration() {
               <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   Google Sheet de Resultados Creado
                 </h3>
@@ -592,7 +591,7 @@ export default function GoogleSheetsIntegration() {
                     className="inline-flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-800 mt-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
                     Ver Resultados en Google Sheets
                   </a>
@@ -606,16 +605,16 @@ export default function GoogleSheetsIntegration() {
         <div className="mt-8 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-8 border border-indigo-100">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-3">
             <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             ¿Cómo funciona?
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-lg p-5 shadow-sm">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-3">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </div>
               <h3 className="font-bold text-gray-800 mb-2">1. Crear Template</h3>
@@ -627,7 +626,7 @@ export default function GoogleSheetsIntegration() {
             <div className="bg-white rounded-lg p-5 shadow-sm">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
                 <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </div>
               <h3 className="font-bold text-gray-800 mb-2">2. Agregar URLs</h3>
@@ -639,7 +638,7 @@ export default function GoogleSheetsIntegration() {
             <div className="bg-white rounded-lg p-5 shadow-sm">
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-3">
                 <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
               <h3 className="font-bold text-gray-800 mb-2">3. Procesar</h3>

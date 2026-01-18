@@ -31,7 +31,7 @@ export default function BatchProcessing() {
     if (import.meta.env.MODE === 'production') {
       return import.meta.env.VITE_API_URL || window.location.origin
     }
-    return import.meta.env.VITE_API_URL || 'http://localhost:8080'
+    return import.meta.env.VITE_API_URL || 'http://localhost:8000'
   }
 
   const API_BASE = getApiBase()
@@ -130,9 +130,13 @@ export default function BatchProcessing() {
       // Create download link
       const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
       const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.download = `propiedades_${new Date().toISOString().split('T')[0]}.csv`
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `propiedades_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
       link.click()
+      document.body.removeChild(link)
 
       alert(`✅ ${completedItems.length} propiedades descargadas en formato CSV`)
     } catch (error) {
@@ -721,8 +725,8 @@ export default function BatchProcessing() {
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <span className="text-sm font-bold text-purple-900 block">Archivo Excel</span>
-                          <p className="text-xs text-purple-700">Descarga un archivo .xlsx local</p>
+                          <span className="text-sm font-bold text-purple-900 block">Archivo CSV (Excel)</span>
+                          <p className="text-xs text-purple-700">Descarga un archivo .csv local</p>
                         </div>
                         <span className="px-3 py-1 bg-purple-600 text-white text-xs rounded-full font-bold">{completedCount}</span>
                       </div>
@@ -788,9 +792,9 @@ export default function BatchProcessing() {
                     >
                       <div className="flex items-start gap-2">
                         <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] transition-all ${item.status === 'completed' ? 'bg-green-100 text-green-700' :
-                            item.status === 'error' ? 'bg-red-100 text-red-700' :
-                              item.status === 'processing' ? 'bg-blue-100 text-blue-700 border-2 border-blue-400' :
-                                'bg-gray-200 text-gray-600'
+                          item.status === 'error' ? 'bg-red-100 text-red-700' :
+                            item.status === 'processing' ? 'bg-blue-100 text-blue-700 border-2 border-blue-400' :
+                              'bg-gray-200 text-gray-600'
                           }`}>
                           {index + 1}
                         </div>
@@ -799,9 +803,9 @@ export default function BatchProcessing() {
                           <div className="flex items-center gap-2 mb-1">
                             {getStatusIcon(item.status)}
                             <span className={`text-xs font-bold uppercase tracking-wide ${item.status === 'completed' ? 'text-green-600' :
-                                item.status === 'error' ? 'text-red-600' :
-                                  item.status === 'processing' ? 'text-blue-600' :
-                                    'text-gray-500'
+                              item.status === 'error' ? 'text-red-600' :
+                                item.status === 'processing' ? 'text-blue-600' :
+                                  'text-gray-500'
                               }`}>
                               {item.status === 'pending' ? 'Pendiente' :
                                 item.status === 'processing' ? 'Procesando' :
