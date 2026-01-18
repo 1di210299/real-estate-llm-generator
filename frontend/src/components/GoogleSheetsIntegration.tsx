@@ -539,8 +539,83 @@ export default function GoogleSheetsIntegration() {
 
             {/* Progress Bar - shown when processing */}
             {isProcessing && taskId && (
-              <div className="mt-6">
+              <div className="mt-6 space-y-4">
                 <ProgressBar progress={progressState} />
+                
+                {/* Progress Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                  {/* Total URLs */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">
+                      URLs Totales
+                    </div>
+                    <div className="text-2xl font-bold text-blue-900">
+                      {progressState.total_steps || '...'}
+                    </div>
+                  </div>
+                  
+                  {/* Current URL Index */}
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <div className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-1">
+                      Procesado
+                    </div>
+                    <div className="text-2xl font-bold text-purple-900">
+                      {progressState.step || 0}
+                    </div>
+                  </div>
+                  
+                  {/* Remaining */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1">
+                      Restantes
+                    </div>
+                    <div className="text-2xl font-bold text-amber-900">
+                      {Math.max(0, (progressState.total_steps || 0) - (progressState.step || 0))}
+                    </div>
+                  </div>
+                  
+                  {/* Progress Percentage */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="text-xs font-medium text-green-600 uppercase tracking-wide mb-1">
+                      Completado
+                    </div>
+                    <div className="text-2xl font-bold text-green-900">
+                      {Math.round(progressState.progress || 0)}%
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Current URL Display */}
+                {progressState.url && (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                    <div className="text-xs font-medium text-indigo-600 uppercase tracking-wide mb-2">
+                      🔗 URL Actual
+                    </div>
+                    <div className="text-sm font-mono text-indigo-900 break-all bg-white px-3 py-2 rounded border border-indigo-200">
+                      {progressState.url}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Stage and Substage */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{progressState.stage?.includes('scraping') || progressState.stage?.includes('fetching') ? '🌐' : progressState.stage?.includes('extract') ? '🔍' : progressState.stage?.includes('llm') ? '🤖' : progressState.stage?.includes('save') ? '💾' : '⏳'}</span>
+                    <div>
+                      <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                        Etapa Actual
+                      </div>
+                      <div className="text-sm font-bold text-gray-900">
+                        {progressState.stage || 'Iniciando...'}
+                      </div>
+                    </div>
+                  </div>
+                  {progressState.substage && (
+                    <div className="text-xs text-gray-700 ml-6 italic">
+                      → {progressState.substage}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

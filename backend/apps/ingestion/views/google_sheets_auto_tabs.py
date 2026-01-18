@@ -297,9 +297,10 @@ class ProcessGoogleSheetView(APIView):
                         {
                             'type': 'progress_update',
                             'progress': int((index / total) * 100),
-                            'status': 'scraping',
-                            'message': f'Scraping property {index + 1}/{total}...',
+                            'status': f'scraping',
+                            'message': f'Procesando {index + 1} de {total}',
                             'stage': 'scraping',
+                            'substage': f'Descargando: {url[:60]}...',
                             'step': index + 1,
                             'total_steps': total,
                             'url': url
@@ -326,12 +327,14 @@ class ProcessGoogleSheetView(APIView):
                         f'progress_{task_id}',
                         {
                             'type': 'progress_update',
-                            'progress': int(((index + 0.5) / total) * 100),
+                            'progress': int(((index + 0.33) / total) * 100),
                             'status': 'extracting',
-                            'message': f'Extracting data {index + 1}/{total}...',
+                            'message': f'Extrayendo datos {index + 1} de {total}',
                             'stage': 'extracting',
+                            'substage': 'Analizando contenido con IA...',
                             'step': index + 1,
-                            'total_steps': total
+                            'total_steps': total,
+                            'url': url
                         }
                     )
                 
@@ -419,12 +422,14 @@ class ProcessGoogleSheetView(APIView):
                         f'progress_{task_id}',
                         {
                             'type': 'progress_update',
-                            'progress': int(((index + 0.75) / total) * 100),
+                            'progress': int(((index + 0.66) / total) * 100),
                             'status': 'saving',
-                            'message': f'Saving property {index + 1}/{total}...',
+                            'message': f'Guardando {index + 1} de {total}',
                             'stage': 'saving',
+                            'substage': f'Tipo detectado: {detected_content_type} | Página: {detected_page_type}',
                             'step': index + 1,
-                            'total_steps': total
+                            'total_steps': total,
+                            'url': url
                         }
                     )
                 
@@ -479,10 +484,12 @@ class ProcessGoogleSheetView(APIView):
                             'type': 'progress_update',
                             'progress': int(((index + 1) / total) * 100),
                             'status': 'completed',
-                            'message': f'Completed property {index + 1}/{total}',
+                            'message': f'✅ Completado {index + 1} de {total}',
                             'stage': 'completed',
+                            'substage': f'Guardado: {extracted_data.get("property_type", "N/A")} en {extracted_data.get("location", "N/A")}',
                             'step': index + 1,
-                            'total_steps': total
+                            'total_steps': total,
+                            'url': url
                         }
                     )
                 
