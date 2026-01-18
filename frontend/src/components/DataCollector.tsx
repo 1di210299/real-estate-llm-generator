@@ -845,16 +845,38 @@ function App() {
                   <option value="auto">
                     🤖 Auto-detect (Recommended for batch)
                   </option>
-                  {contentTypes.map((type) => (
-                    <option key={type.key} value={type.key}>
-                      {type.icon} {type.label}
-                    </option>
-                  ))}
+                  {contentTypes.map((type) => {
+                    const isInProgress = ['restaurant', 'tips_locales', 'transport'].includes(type.key)
+                    return (
+                      <option key={type.key} value={type.key} disabled={isInProgress}>
+                        {type.icon} {type.label} {isInProgress ? '(En Proceso)' : ''}
+                      </option>
+                    )
+                  })}
                 </select>
                 {selectedContentType === 'auto' ? (
-                  <p className="mt-1 text-xs text-gray-500">
-                    ✨ El sistema detectará automáticamente si es tour, propiedad, restaurante, etc. Ideal para procesar múltiples URLs de diferentes tipos.
-                  </p>
+                  <>
+                    <p className="mt-1 text-xs text-gray-500">
+                      ✨ El sistema detectará automáticamente si es tour, propiedad, restaurante, etc. Ideal para procesar múltiples URLs de diferentes tipos.
+                    </p>
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-xs font-medium text-yellow-800 mb-2">⚠️ En desarrollo:</p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
+                          🍽️ Restaurantes
+                          <span className="ml-1 px-1.5 py-0.5 bg-yellow-200 rounded text-xs">pronto</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
+                          💡 Tips Locales
+                          <span className="ml-1 px-1.5 py-0.5 bg-yellow-200 rounded text-xs">pronto</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
+                          🚗 Transporte
+                          <span className="ml-1 px-1.5 py-0.5 bg-yellow-200 rounded text-xs">pronto</span>
+                        </span>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   contentTypes.find(t => t.key === selectedContentType) && (
                     <p className="mt-1 text-xs text-gray-500">
